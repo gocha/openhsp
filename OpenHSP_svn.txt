@@ -34,6 +34,8 @@
        +----hsed3      簡易スクリプトエディタ(hsed3le.exe)ソース
        +----hsed3f     標準スクリプトエディタ(hsed3.exe)ソース
 
+・temp                 一時ファイル置き場
+
 ■Open HSP tagsフォルダ管理
 
 ・バージョンごとのtagを格納します

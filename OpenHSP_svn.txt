@@ -12,10 +12,10 @@
   +----win32dll        Win32(DLL)用ソースコード
 
 ・package              最新パッケージ用データファイル
+  +----hsphelp         ヘルプ(hs)用ファイル
   +----win32           Win32用パッケージデータ
        +----common     common(標準ヘッダ)用ファイル
        +----docs       各種ドキュメントファイル
-       +----hsphelp    ヘルプ(hs)用ファイル
        +----hspsdk     HSPSDK用ファイル
 
 ・plugins              HSP対応プラグインソース

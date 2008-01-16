@@ -2,12 +2,12 @@
 ■Open HSP trunkフォルダ管理
 
 ・hsp3                 HSP3.xランタイムソース(コア)
-  +----linux           Linux(gcc)用ソースコード
+  +----linux           Linux(コンソール)用ソースコード
   +----win32           Win32(コンソール)用ソースコード
   +----win32gui        Win32(GUI)用ソースコード
 
 ・hspcmp               HSP3.xコードジェネレーターソース(コア)
-  +----linux           Linux(gcc)用ソースコード
+  +----linux           Linux(コンソール)用ソースコード
   +----win32           Win32(コンソール)用ソースコード
   +----win32dll        Win32(DLL)用ソースコード
 
@@ -16,7 +16,7 @@
   +----win32           Win32用パッケージデータ
        +----common     common(標準ヘッダ)用ファイル
        +----docs       各種ドキュメントファイル
-       +----hspsdk     HSPSDK用ファイル
+       +----hspsdk     HSPSDK用ファイル(サンプル・ドキュメント)
 
 ・plugins              HSP対応プラグインソース
   +----win32           Win32用プラグインソース
@@ -28,11 +28,13 @@
        +----hspinet    hspinet.dllソースコード
        +----hspsock    hspsock.dllソースコード
   +----hsplet          HSPLet用プラグインソース
+       +----hspda      hspdaプラグインソースコード
 
 ・tools                HSP対応ツールソース
   +----win32           Win32用プラグインソース
        +----hsed3      簡易スクリプトエディタ(hsed3le.exe)ソース
        +----hsed3f     標準スクリプトエディタ(hsed3.exe)ソース
+       +----hsp3debug  hsp3debug.dllソース
 
 ・temp                 一時ファイル置き場
 

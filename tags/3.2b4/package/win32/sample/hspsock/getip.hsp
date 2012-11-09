@@ -1,8 +1,0 @@
-
-#include "Hspsock.as"
-
-	ipget
-	mes "IP="+refstr
-	stop
-
-

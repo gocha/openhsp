@@ -1,0 +1,15 @@
+	#include "hsp3w.as"
+	sdim t
+	mesbox t
+	button goto "Å®",*@f
+	font msgothic,36,0
+	mes "hello."
+	stop
+*@
+	notesel t
+	dialog "*",17,"*"
+	if stat == 0:stop
+	notesave refstr
+	noteunsel
+	dialog t
+	mes t

@@ -1,0 +1,6 @@
+	#include "hsp3w.as"
+	#uselib "user32.dll"
+	#func MessageBoxW "MessageBoxW" int,wptr,wptr,int
+	#func MessageBoxA "MessageBoxA" int,sptr,sptr,int
+	MessageBoxW 0,"Hello","World",0
+	MessageBoxA 0,"‚±‚ñ‚É‚¿‚Í","¢ŠE",0

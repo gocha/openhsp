@@ -1,0 +1,8 @@
+	#include "hsp3w.as"
+	sdim w,64
+	w="A"
+	cnv8tow w,"Hello"
+	color 0,0,0
+	mes stat
+	u8 = cnvwto8(w)
+	mes u8

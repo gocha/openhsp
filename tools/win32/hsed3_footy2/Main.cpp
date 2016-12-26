@@ -12,6 +12,7 @@
 -----------------------------------------------------*/
 
 #include <stdio.h>
+#include <tchar.h>
 #include <windows.h>
 #include <windowsx.h>
 #include <commctrl.h>
@@ -43,21 +44,21 @@ LRESULT CALLBACK WndProc (HWND, UINT, WPARAM, LPARAM) ;
 LRESULT CALLBACK ClientWndProc (HWND, UINT, WPARAM, LPARAM) ;
 
 extern BOOL      bNeedSave ;
-extern char      szDirName[_MAX_PATH] ;
-extern char      szFileName[_MAX_PATH] ;
-extern char      szTitleName[_MAX_FNAME + _MAX_EXT] ;
+extern TCHAR      szDirName[_MAX_PATH] ;
+extern TCHAR      szFileName[_MAX_PATH] ;
+extern TCHAR      szTitleName[_MAX_FNAME + _MAX_EXT] ;
 
-char szStartDir[_MAX_PATH];
-char szExeDir[_MAX_PATH];
-char szDllDir[_MAX_PATH];
-char szAppName[]  = "onipad" ;
+TCHAR szStartDir[_MAX_PATH];
+TCHAR szExeDir[_MAX_PATH];
+TCHAR szDllDir[_MAX_PATH];
+TCHAR szAppName[]  = TEXT("onipad") ;
 int	 winflg,winx,winy,posx,posy,flg_toolbar,flg_statbar,flg_hspat;
 //int  flag_xpstyle;
 HWND hWndMain;
 HWND hwndConfigDlg = NULL;
 
 int	startflag;
-char startdir[_MAX_PATH];
+TCHAR startdir[_MAX_PATH];
 
 BOOL bIgnoreSize = FALSE ;
 HINSTANCE hInst ;
@@ -106,14 +107,15 @@ void StatusBarMessage (HWND hwndSB, WORD wMsg) ;
 LRESULT Statusbar_MenuSelect (HWND, WPARAM, LPARAM) ;
 
 // Poppad functions.
-void DoCaption (char *, int);
-void LoadFromCommandLine(char *);
+void DoCaption (LPTSTR , int);
+void LoadFromCommandLine(LPTSTR );
 
 //-------------------------------------------------------------------
 //	XP Visual Style 対策コード
 //-------------------------------------------------------------------
 
-int getUnicodeOffset( char *text, int offset )
+#ifndef UNICODE
+int getUnicodeOffset(LPTSTR text, int offset)
 {
 	//		全角文字を1文字とした単位でのオフセットを求める(unicode offset対策)
 	//
@@ -135,10 +137,10 @@ int getUnicodeOffset( char *text, int offset )
 		}
 		res--;
 	}
-	return ((int)(p-(unsigned char *)text));
+	return ((int)(p - (unsigned char *)text));
 }
 
-int getUnicodeOffset2( char *text, int offset )
+int getUnicodeOffset2( LPTSTR text, int offset )
 {
 	//		mboffset->unicode offsetに変換する(unicode offset対策)
 	//
@@ -147,7 +149,7 @@ int getUnicodeOffset2( char *text, int offset )
 	unsigned char *p2;
 	unsigned char a1;
 
-	p = (unsigned char *)text;
+	p = (unsigned char * )text;
 	p2 = p + offset;
 	res = 0;
 	for(;;) {
@@ -163,6 +165,7 @@ int getUnicodeOffset2( char *text, int offset )
 	}
 	return (res);
 }
+#endif
 
 struct DLLVERSIONINFO{
     DWORD cbSize;
@@ -254,7 +257,7 @@ struct DLLVERSIONINFO{
 // 関数SHGetSpecialFolderPath() が使用できない環境で特殊フォルダのパスを取得する。
 // 引数は SHGetSpecialFolderPath() と同じ。
 //*********************************************************
-static BOOL GetSpecialFolderPath( HWND hWnd, int nFolder, char *Path )
+static BOOL GetSpecialFolderPath( HWND hWnd, int nFolder, LPTSTR Path )
 {
 	IMalloc    *pMalloc;
 	ITEMIDLIST *pidl;
@@ -282,7 +285,7 @@ static BOOL GetSpecialFolderPath( HWND hWnd, int nFolder, char *Path )
 int CALLBACK EnumWindowsProc(HWND hWnd, LPARAM /*lParam*/)
 {
 	COPYDATASTRUCT cds;
-	char *lpCmdLine;
+	LPTSTR lpCmdLine;
 
 	if(GetProp(hWnd, PROP_NAME)){
 		// コマンドラインを既存のウィンドウに送信
@@ -290,7 +293,7 @@ int CALLBACK EnumWindowsProc(HWND hWnd, LPARAM /*lParam*/)
 		lpCmdLine = GetCommandLine();
 		cds.dwData = 0;
 		cds.lpData = (void *)lpCmdLine;
-		cds.cbData = lstrlen(lpCmdLine) + 1;
+		cds.cbData = (lstrlen(lpCmdLine) + 1) * sizeof(TCHAR);
 		SendMessage(hWnd, WM_COPYDATA, (WPARAM)NULL, (LPARAM)&cds);
 
 		// ウィンドウをアクティブにしてフォーカスを移す
@@ -306,11 +309,11 @@ int CALLBACK EnumWindowsProc(HWND hWnd, LPARAM /*lParam*/)
 
 //-------------------------------------------------------------------
 
-int BuildEzInputMenu( HMENU menu, char *fname, char *dirname )
+int BuildEzInputMenu( HMENU menu, LPTSTR fname, LPTSTR dirname )
 {
 	//		かんたん入力メニュー構築
 	//
-	char *p;
+	LPTSTR p;
 	int fl;
 	int stat_main;
 	HANDLE sh;
@@ -318,15 +321,15 @@ int BuildEzInputMenu( HMENU menu, char *fname, char *dirname )
 	DWORD fmask;
 	BOOL ff;
 	HMENU popmenu;
-	char wname[_MAX_PATH];
-	char tmp[_MAX_PATH];
+	TCHAR wname[_MAX_PATH];
+	TCHAR tmp[_MAX_PATH];
 
 	fmask=0;
 	//if (p3&1) fmask|=FILE_ATTRIBUTE_DIRECTORY;
 	//if (p3&2) fmask|=FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM;
 
 	stat_main=0;
-	wsprintf( wname, "%s\\*.*", fname );
+	wsprintf( wname, TEXT("%s\\*.*"), fname );
 
 	sh=FindFirstFile( wname, &fd );
 	if (sh==INVALID_HANDLE_VALUE) {
@@ -347,10 +350,10 @@ int BuildEzInputMenu( HMENU menu, char *fname, char *dirname )
 		}
 		if (fl) {
 			if ( ff & FILE_ATTRIBUTE_DIRECTORY ) {
-				wsprintf( tmp, "%s\\%s", fname, p );
+				wsprintf( tmp, TEXT("%s\\%s"), fname, p );
 				BuildEzInputMenu( popmenu, tmp, p );		// 再帰で検索
 			} else {
-				wsprintf( tmp, "%s\\%s", fname, p );
+				wsprintf( tmp, TEXT("%s\\%s"), fname, p );
 				AhtMenuBuf->Index();
 				AhtMenuBuf->PutStrBlock( tmp );
 
@@ -371,8 +374,8 @@ int BuildEzInputMenu( HMENU menu, char *fname, char *dirname )
 
 int ExecEzInputMenu( int id )
 {
-	char *p;
-	char tmpfn[1024];
+	LPTSTR p;
+	TCHAR tmpfn[1024];
 	int num,i;
 	num = id - IDM_AHTEZINPUT;
 	if ( num < 0 ) return -1;
@@ -381,7 +384,7 @@ int ExecEzInputMenu( int id )
 	p = AhtMenuBuf->GetBuffer() + i;
 	//msgboxf(NULL, "%s"	, "EXEC", MB_OK | MB_ICONEXCLAMATION, p);
 
-	wsprintf( tmpfn, "\"%s\\ahtman.exe\" %s", szExeDir,p );
+	wsprintf( tmpfn, TEXT("\"%s\\ahtman.exe\" %s"), szExeDir,p );
 	WinExec( tmpfn, SW_SHOW );
 
 	return 0;
@@ -399,9 +402,9 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
      HACCEL      hAccel ;
 	 int		 a;
 	 int		 scmd;
-	 char		 a1;
+	 TCHAR		 a1;
 	 HANDLE      hMutex ;
-	 char		 tmp[_MAX_PATH];
+	 TCHAR		 tmp[_MAX_PATH];
 
 	 hMutex = CreateMutex(NULL, TRUE, MUTEX_NAME);
 	 if(GetLastError() == ERROR_ALREADY_EXISTS){
@@ -434,7 +437,7 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 
      RegisterClassEx (&wc) ;
 
-     wc.lpszClassName = "ClientWndProc" ;
+     wc.lpszClassName = TEXT("ClientWndProc") ;
      wc.hInstance     = hInstance ;
      wc.lpfnWndProc   = ClientWndProc ;
      wc.hCursor       = LoadCursor (NULL, IDC_ARROW) ;
@@ -448,7 +451,7 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 
      RegisterClassEx (&wc) ;
 
-	 wc.lpszClassName = "DummyWndProc" ;
+	 wc.lpszClassName = TEXT("DummyWndProc") ;
      wc.hInstance     = hInstance ;
      wc.lpfnWndProc   = DefWindowProc ;
      wc.hCursor       = LoadCursor (NULL, IDC_ARROW) ;
@@ -464,26 +467,26 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 
 
 	GetModuleFileName( NULL,szExeDir, _MAX_PATH );
-	a=(int)strlen(szExeDir)-1;
+	a=(int)_tcslen(szExeDir)-1;
 	for(;;) {
-		a1=szExeDir[a];if (a1=='\\') break;
+		a1=szExeDir[a];if (a1==TEXT('\\')) break;
 		a--;
 	}
 	szExeDir[a]=0;
 
 	//		DLLを初期化
 
-	strcpy( szDllDir,szExeDir );
-	strcat( szDllDir,"\\" FILE_HSPCMP );
+	_tcscpy( szDllDir,szExeDir );
+	_tcscat( szDllDir,TEXT("\\") FILE_HSPCMP );
 	a=dll_ini( szDllDir );
 	if (a!=1) {
 		msgboxf(NULL,
 #ifdef JPNMSG
-		"%sが見つかりませんでした。"
+		TEXT("%sが見つかりませんでした。")
 #else
-		"%s not found."
+		TEXT("%s not found.")
 #endif
-		, "Startup error", MB_OK | MB_ICONEXCLAMATION, szDllDir);
+		, TEXT("Startup error"), MB_OK | MB_ICONEXCLAMATION, szDllDir);
 		dll_bye(); return -1;
 	}
 
@@ -501,7 +504,7 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	winy=CW_USEDEFAULT;
     LoadConfig();
 
-	hwndDummy = CreateWindow("DummyWndProc", NULL, WS_OVERLAPPEDWINDOW, 0, 0, 0, 0,
+	hwndDummy = CreateWindow(TEXT("DummyWndProc"), NULL, WS_OVERLAPPEDWINDOW, 0, 0, 0, 0,
 		NULL, NULL, hInstance, NULL);
     hwnd = CreateWindowEx( 0L,
                            szAppName, szAppName,
@@ -516,13 +519,13 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	AhtMenuBuf = new CMemBuf;
 	AhtMenuBuf->AddIndexBuffer();
 	EzMenuId = IDM_AHTEZINPUT;
-	hMenu = LoadMenu(hInstance, "CONTEXTMENU");
+	hMenu = LoadMenu(hInstance, TEXT("CONTEXTMENU"));
 	hSubMenu = GetSubMenu(hMenu, 0);
 
-	wsprintf( tmp, "%s\\ezinput", szExeDir );
-	BuildEzInputMenu( hSubMenu, tmp, "かんたん入力" );
+	wsprintf( tmp, TEXT("%s\\ezinput"), szExeDir );
+	BuildEzInputMenu( hSubMenu, tmp, TEXT("かんたん入力") );
 
-	hMenu2 = LoadMenu(hInstance, "CONTEXTMENU2");
+	hMenu2 = LoadMenu(hInstance, TEXT("CONTEXTMENU2"));
 	hSubMenu2 = GetSubMenu(hMenu2, 0);
 
 	//		起動ディレクトリ設定
@@ -532,16 +535,16 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	 	GetSpecialFolderPath( hwnd, CSIDL_PERSONAL, szStartDir );
 		break;
 	case STARTDIR_USER:
-		strcpy( szStartDir, startdir );
+		_tcscpy( szStartDir, startdir );
 		break;
 	default:
 		szStartDir[0] = 0;
 		break;
 	}
 	if ( szStartDir[0] == 0 ) {
-		_getcwd( szStartDir, _MAX_PATH );
+		_tgetcwd( szStartDir, _MAX_PATH );
 	} else {
-		_chdir( szStartDir );
+		_tchdir( szStartDir );
 	}
 
 	SetMenuExtTool();
@@ -563,13 +566,13 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	if(!InitInterface(hInstance))
 		MessageBox(hwnd, 
 #ifdef JPNMSG
-			"外部ツール用のウィンドウの初期化に失敗しました。\n"
-			"一部の外部ツールを使用することはできません。"
+			TEXT("外部ツール用のウィンドウの初期化に失敗しました。\n")
+			TEXT("一部の外部ツールを使用することはできません。")
 #else
-			"Failed to initialize a window for extension tools.\n"
-			"You can't use some extending tools."
+			TEXT("Failed to initialize a window for extension tools.\n")
+			TEXT("You can't use some extending tools.")
 #endif
-			, "start up error", MB_OK | MB_ICONEXCLAMATION);
+			, TEXT("start up error"), MB_OK | MB_ICONEXCLAMATION);
 
 	//	main loop
 
@@ -634,7 +637,7 @@ void UpdateViewOption( int toolbar_flag, int stbar_flag )
 	PostMessage (hWndMain, WM_SIZE, 0, MAKELPARAM (r.right, r.bottom));
 }
 //-------------------------------------------------------------------
-LRESULT CALLBACK
+LRESULT WINAPI
 WndProc (HWND hwnd, UINT mMsg, WPARAM wParam, LPARAM lParam) 
      {
      switch (mMsg)
@@ -654,7 +657,7 @@ WndProc (HWND hwnd, UINT mMsg, WPARAM wParam, LPARAM lParam)
 
                // Create client window (contains notify list).
                hwndClient = CreateWindowEx (WS_EX_CLIENTEDGE,
-                                 "ClientWndProc", NULL,
+                                 TEXT("ClientWndProc"), NULL,
                                  WS_CHILD | WS_VISIBLE, 0, 0, 0, 0,
                                  hwnd, (HMENU) 4, hInst, NULL) ;
 
@@ -862,7 +865,7 @@ WndProc (HWND hwnd, UINT mMsg, WPARAM wParam, LPARAM lParam)
 		  case WM_COPYDATA:
 			  {
                   COPYDATASTRUCT *pcds = (COPYDATASTRUCT*)lParam;
-				  LoadFromCommandLine((char *)pcds->lpData);
+				  LoadFromCommandLine((LPTSTR )pcds->lpData);
                   return 0;
 			  }
 
@@ -887,7 +890,7 @@ WndProc (HWND hwnd, UINT mMsg, WPARAM wParam, LPARAM lParam)
 //	}
 //}
 
-LRESULT CALLBACK 
+LRESULT WINAPI 
 ClientWndProc (HWND hwnd, UINT mMsg, WPARAM wParam, LPARAM lParam)
      {
 	RECT rect;
@@ -988,14 +991,14 @@ ClientWndProc (HWND hwnd, UINT mMsg, WPARAM wParam, LPARAM lParam)
 /*------------------------------------------------------------*/
 
 static	HWND tarhw=NULL;
-static	char wtitle[256];
+static	TCHAR wtitle[256];
 static	int stobj, objcnt;
 
 static BOOL CALLBACK cbWins( HWND hwnd, LPARAM lParam )
 {
 	int a;
-	char a1;
-	char namtmp[256];
+	TCHAR a1;
+	TCHAR namtmp[256];
 
 	objcnt++;
 	if (objcnt<stobj) return TRUE;
@@ -1010,11 +1013,11 @@ static BOOL CALLBACK cbWins( HWND hwnd, LPARAM lParam )
 	return FALSE;
 }
 
-HWND main_aplsel( char *p1 )
+HWND main_aplsel( LPTSTR p1 )
 {
 	tarhw=NULL;
 	objcnt=0;stobj=1;
-	strcpy( wtitle,p1 );
+	_tcscpy( wtitle,p1 );
 	EnumWindows( (WNDENUMPROC) &cbWins, 0 );
 	if (tarhw==NULL) return NULL;
 	return tarhw;

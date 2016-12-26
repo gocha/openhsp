@@ -7,27 +7,28 @@
 #include <commdlg.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <tchar.h>
 #include "poppad.h"
 #include "Footy2.h"
 #include "tabmanager.h"
 #include "classify.h"
 
 static OPENFILENAME ofn, ofn2 ;
-static char szMyDir[_MAX_PATH];
+static TCHAR szMyDir[_MAX_PATH];
 
 extern int	startflag;
-extern char startdir[_MAX_PATH];
+extern TCHAR startdir[_MAX_PATH];
 
 extern int activeFootyID ;
 extern int activeID ;
 
 void PopFileInitialize (HWND hwnd)
      {
-     static char szFilter[] = 
-	                          "HSP Source (*.hsp)\0*.hsp\0"  \
-	                          "HSP Header (*.as)\0*.as\0"  \
-                              "Text Files (*.txt)\0*.txt\0" \
-                              "All Files (*.*)\0*.*\0\0" ;
+     static TCHAR szFilter[] = 
+	                          TEXT("HSP Source (*.hsp)\0*.hsp\0")  \
+	                          TEXT("HSP Header (*.as)\0*.as\0")  \
+                              TEXT("Text Files (*.txt)\0*.txt\0") \
+                              TEXT("All Files (*.*)\0*.*\0\0") ;
 
      ofn.lStructSize       = sizeof (OPENFILENAME) ;
      ofn.hwndOwner         = hwnd ;
@@ -45,14 +46,14 @@ void PopFileInitialize (HWND hwnd)
      ofn.Flags             = 0 ;             // Set in Open and Close functions
      ofn.nFileOffset       = 0 ;
      ofn.nFileExtension    = 0 ;
-     ofn.lpstrDefExt       = "txt" ;
+     ofn.lpstrDefExt       = TEXT("txt") ;
      ofn.lCustData         = 0L ;
      ofn.lpfnHook          = NULL ;
      ofn.lpTemplateName    = NULL ;
 
-	 static char szFilter2[] = 
-	                          "Excutable Files (*.EXE,*.COM,*.BAT)\0*.exe;*.com;*.bat\0"  \
-                              "All Files (*.*)\0*.*\0\0" ;
+	 static TCHAR szFilter2[] = 
+	                          TEXT("Excutable Files (*.EXE,*.COM,*.BAT)\0*.exe;*.com;*.bat\0")  \
+                              TEXT("All Files (*.*)\0*.*\0\0") ;
 
      ofn2.lStructSize       = sizeof (OPENFILENAME) ;
      ofn2.hwndOwner         = hwnd ;
@@ -70,13 +71,13 @@ void PopFileInitialize (HWND hwnd)
      ofn2.Flags             = 0 ;             // Set in Open and Close functions
      ofn2.nFileOffset       = 0 ;
      ofn2.nFileExtension    = 0 ;
-     ofn2.lpstrDefExt       = "exe" ;
+     ofn2.lpstrDefExt       = TEXT("exe") ;
      ofn2.lCustData         = 0L ;
      ofn2.lpfnHook          = NULL ;
      ofn2.lpTemplateName    = NULL ;
      }
 
-BOOL PopFileOpenDlg (HWND hwnd, PSTR pstrFileName, PSTR pstrTitleName)
+BOOL PopFileOpenDlg (HWND hwnd, LPTSTR pstrFileName, LPTSTR pstrTitleName)
      {
  
 	 ofn.hwndOwner         = hwnd ;
@@ -87,14 +88,14 @@ BOOL PopFileOpenDlg (HWND hwnd, PSTR pstrFileName, PSTR pstrTitleName)
 	 if ( startflag == STARTDIR_NONE ) {
 		 ofn.lpstrInitialDir   = NULL;
 	 } else {
-		 _getcwd( szMyDir, _MAX_PATH );
+		 _tgetcwd( szMyDir, _MAX_PATH );
 		 ofn.lpstrInitialDir   = szMyDir ;
 	 }
 
 	 return GetOpenFileName (&ofn);
      }
 
-BOOL PopFileOpenDlg2 (HWND hwnd, PSTR pstrFileName, PSTR pstrTitleName)
+BOOL PopFileOpenDlg2 (HWND hwnd, LPTSTR pstrFileName, LPTSTR pstrTitleName)
      {
  
 	 ofn2.hwndOwner         = hwnd ;
@@ -105,7 +106,7 @@ BOOL PopFileOpenDlg2 (HWND hwnd, PSTR pstrFileName, PSTR pstrTitleName)
 	 if ( startflag == STARTDIR_NONE ) {
 		 ofn2.lpstrInitialDir   = NULL;
 	 } else {
-		 _getcwd( szMyDir, _MAX_PATH );
+		 _tgetcwd( szMyDir, _MAX_PATH );
 		 ofn2.lpstrInitialDir   = szMyDir ;
 	 }
 
@@ -113,7 +114,7 @@ BOOL PopFileOpenDlg2 (HWND hwnd, PSTR pstrFileName, PSTR pstrTitleName)
      }
 
 
-BOOL PopFileSaveDlg (HWND hwnd, PSTR pstrFileName, PSTR pstrTitleName)
+BOOL PopFileSaveDlg (HWND hwnd, LPTSTR pstrFileName, LPTSTR pstrTitleName)
      {
 
 	 ofn.hwndOwner         = hwnd ;
@@ -124,7 +125,7 @@ BOOL PopFileSaveDlg (HWND hwnd, PSTR pstrFileName, PSTR pstrTitleName)
 	 if ( startflag == STARTDIR_NONE ) {
 		 ofn.lpstrInitialDir   = NULL;
 	 } else {
-		 _getcwd( szMyDir, _MAX_PATH );
+		 _tgetcwd( szMyDir, _MAX_PATH );
 		 ofn.lpstrInitialDir   = szMyDir ;
 	 }
 
@@ -146,7 +147,7 @@ BOOL PopFileSaveDlg (HWND hwnd, PSTR pstrFileName, PSTR pstrTitleName)
 //     return iFileLength ;
 //     }
 
-BOOL PopFileRead (int nFootyID, PSTR pstrFileName)
+BOOL PopFileRead (int nFootyID, LPTSTR pstrFileName)
      {
 //     FILE    *file ;
 //     int      iLength ;
@@ -175,7 +176,11 @@ BOOL PopFileRead (int nFootyID, PSTR pstrFileName)
 //
 //     return TRUE ;
 		int nRet;
+#ifndef UNICODE
 		nRet = Footy2TextFromFile(nFootyID, pstrFileName, CSM_PLATFORM);
+#else
+		nRet = Footy2TextFromFile(nFootyID, pstrFileName, CSM_AUTOMATIC);
+#endif
 		if( FOOTY2ERR_NONE != nRet ) {
 			return FALSE;
 		}
@@ -184,7 +189,7 @@ BOOL PopFileRead (int nFootyID, PSTR pstrFileName)
 		return TRUE;
      }
 
-BOOL PopFileWrite (int FootyID, PSTR pstrFileName)
+BOOL PopFileWrite (int FootyID, LPTSTR pstrFileName)
      {
 //     FILE  *file ;
 //     int    iLength ;
@@ -218,7 +223,11 @@ BOOL PopFileWrite (int FootyID, PSTR pstrFileName)
 //
 //     return TRUE ;
 		int nRet;
+#ifndef UNICODE
 		nRet = Footy2SaveToFile(FootyID, pstrFileName, CSM_AUTOMATIC, LM_AUTOMATIC);
+#else
+		nRet = Footy2SaveToFile(FootyID, pstrFileName, CSM_UTF8, LM_CRLF);
+#endif
 		if( FOOTY2ERR_NONE != nRet ) {
 			return FALSE;
 		}

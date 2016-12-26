@@ -44,7 +44,7 @@ HWND InitStatusBar (HWND hwndParent)
      popstr[4].uiString = 0 ;
 
      hwndSB = CreateStatusWindow (dwStatusBarStyles,
-                                  "Ready",
+                                  TEXT("Ready"),
                                   hwndParent,
                                   2) ;
      return hwndSB ;
@@ -86,33 +86,33 @@ void StatusBarMessage (HWND hwndSB, WORD wMsg)
           {
           case IDM_ST_GETBORDERS :
                {
-               char ach[180] ;
+               TCHAR ach[180] ;
                int aiBorders[3] ;
 
                Status_GetBorders (hwndSB, &aiBorders) ;
-               wsprintf (ach, "Horiz Width = %d\n"
-                         "Vert Width = %d\n"
-                         "Separator Width = %d",
+               wsprintf (ach, TEXT("Horiz Width = %d\n")
+                         TEXT("Vert Width = %d\n")
+                         TEXT("Separator Width = %d"),
                          aiBorders[0], aiBorders[1],
                          aiBorders[2]) ;
                MessageBox (GetParent (hwndSB), ach, 
-                           "SB_GETBORDERS", MB_OK) ;
+                           TEXT("SB_GETBORDERS"), MB_OK) ;
                break ;
                }
 
           case IDM_ST_GETPARTS :
                {
-               char ach[80] ;
+               TCHAR ach[80] ;
                int nParts = Status_GetParts (hwndSB, 0, 0) ;
-               wsprintf (ach, "Part Count = %d", nParts) ;
+               wsprintf (ach, TEXT("Part Count = %d"), nParts) ;
                MessageBox (GetParent (hwndSB), ach, 
-                           "SB_GETPARTS", MB_OK) ;
+                           TEXT("SB_GETPARTS"), MB_OK) ;
                break ;
                }
 
           case IDM_ST_SETTEXT :
                Status_SetText (hwndSB, 0, 0, 
-                               "SB_SETTEXT Message Sent") ;
+                               TEXT("SB_SETTEXT Message Sent")) ;
                break;
 
           case IDM_ST_SIMPLE :
@@ -127,7 +127,7 @@ void StatusBarMessage (HWND hwndSB, WORD wMsg)
 
 //-------------------------------------------------------------------
 
-void Statusbar_mes( char *mes )
+void Statusbar_mes( LPTSTR mes )
 {
 	Status_SetText ( hwndStatusBar, 0, 0, mes ) ;
 }

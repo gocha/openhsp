@@ -7,26 +7,29 @@
 
 int __cdecl msgboxf(HWND, LPCTSTR, LPCTSTR, UINT, ...);
 void ShowLastError();
-LPSTR *CommandLineToArgvA(LPSTR, int *);
-size_t strlcpy(char *, char *, size_t);
-ULONGLONG GetFileIndex(const char *);
-int getStrLinesSize(const char *);
-void GetDirName(char *dirName, const char *path);
+LPTSTR *CommandLineToArgvA(LPTSTR, int *);
+size_t strlcpy(LPTSTR , LPTSTR , size_t);
+ULONGLONG GetFileIndex(LPCTSTR );
+int getStrLinesSize(LPCTSTR );
+void GetDirName(LPTSTR dirName, LPCTSTR path);
+#ifdef UNICODE
+UINT WinExec(LPCTSTR lpCmdLine, UINT uCmdShow);
+#endif
 
 class FileList{
 private:
-	char *buf, *buf2;
-	char **index;
+	TCHAR *buf, *buf2;
+	LPTSTR *index;
 	int bufsize, idxsize, offset, idxoffset;
 
 public:
 	FileList();
 	~FileList();
 	void reset();
-	void add(const char *);
-	const char *get(int);
-	void setlist(const char *);
-	const char *getlist();
+	void add(LPCTSTR );
+	LPCTSTR get(int);
+	void setlist(LPCTSTR );
+	LPCTSTR getlist();
 	size_t num();
 };
 

@@ -5,6 +5,7 @@
 #include <windows.h>
 #include <commctrl.h>
 #include <stdio.h>
+#include <tchar.h>
 #include "Footy2.h"
 #include "tabmanager.h"
 #include "classify.h"
@@ -13,7 +14,7 @@
 
 // Type table
 typedef struct tagTypeTable{
-	char *Type;
+	LPTSTR Type;
 	COLORREF *color;
 	int Status;
 } TYPE_TABLE;
@@ -22,8 +23,8 @@ typedef struct tagTypeTable{
 MYCOLOR color;
 
 typedef struct tagDefaultClassifyTable{
-	const char *Word1;
-	const char *Word2;
+	LPCTSTR Word1;
+	LPCTSTR Word2;
 	int Type;
 	COLORREF *color;
 	int Status;
@@ -35,18 +36,18 @@ typedef struct tagDefaultClassifyTable{
 DEF_CLASSIFY_TABLE DefClassifyTable[] = {
 
 	// Grammer
-	"\\\\",		"",		EMP_LINE_BETWEEN,	&(color.Character.String.Conf),		0,	4,	PERMIT_LEVEL(1), EMP_IND_ALLOW_ALL,
-	"\\\"",		"",		EMP_LINE_BETWEEN,	&(color.Character.String.Conf),		0,	4,	PERMIT_LEVEL(1), EMP_IND_ALLOW_ALL,
-	"\"",		"\"",	EMP_LINE_BETWEEN,	&(color.Character.String.Conf),		0,	1,	PERMIT_LEVEL(0), EMP_IND_ALLOW_ALL,
-	"'",		"'",	EMP_LINE_BETWEEN,	&(color.Character.String.Conf),		0,	1,	PERMIT_LEVEL(0), EMP_IND_ALLOW_ALL, // ※TODO:新たな色種別を追加する
-	"{\"",		"\"}",	EMP_MULTI_BETWEEN,	&(color.Character.String.Conf),		0,	1,	PERMIT_LEVEL(0), EMP_IND_ALLOW_ALL,
+	TEXT("\\\\"),		TEXT(""),		EMP_LINE_BETWEEN,	&(color.Character.String.Conf),		0,	4,	PERMIT_LEVEL(1), EMP_IND_ALLOW_ALL,
+	TEXT("\\\""),		TEXT(""),		EMP_LINE_BETWEEN,	&(color.Character.String.Conf),		0,	4,	PERMIT_LEVEL(1), EMP_IND_ALLOW_ALL,
+	TEXT("\""),		TEXT("\""),	EMP_LINE_BETWEEN,	&(color.Character.String.Conf),		0,	1,	PERMIT_LEVEL(0), EMP_IND_ALLOW_ALL,
+	TEXT("'"),		TEXT("'"),	EMP_LINE_BETWEEN,	&(color.Character.String.Conf),		0,	1,	PERMIT_LEVEL(0), EMP_IND_ALLOW_ALL, // ※TODO:新たな色種別を追加する
+	TEXT("{\""),		TEXT("\"}"),	EMP_MULTI_BETWEEN,	&(color.Character.String.Conf),		0,	1,	PERMIT_LEVEL(0), EMP_IND_ALLOW_ALL,
 //	":",		"",		EMP_LINE_AFTER,		&(color.Character.Default.Conf),	0,	2,	PERMIT_LEVEL(0), EMP_IND_ALLOW_ALL,
-	"/*",		"*/",	EMP_MULTI_BETWEEN,	&(color.Character.Comment.Conf),	0,	3,	PERMIT_LEVEL(0)|PERMIT_LEVEL(5), EMP_IND_ALLOW_ALL,
-	";",		"",		EMP_LINE_AFTER,		&(color.Character.Comment.Conf),	0,	3,	PERMIT_LEVEL(0)|PERMIT_LEVEL(5), EMP_IND_ALLOW_ALL,
-	"//",		"",		EMP_LINE_AFTER,		&(color.Character.Comment.Conf),	0,	3,	PERMIT_LEVEL(0)|PERMIT_LEVEL(5), EMP_IND_ALLOW_ALL,
+	TEXT("/*"),		TEXT("*/"),	EMP_MULTI_BETWEEN,	&(color.Character.Comment.Conf),	0,	3,	PERMIT_LEVEL(0)|PERMIT_LEVEL(5), EMP_IND_ALLOW_ALL,
+	TEXT(";"),		TEXT(""),		EMP_LINE_AFTER,		&(color.Character.Comment.Conf),	0,	3,	PERMIT_LEVEL(0)|PERMIT_LEVEL(5), EMP_IND_ALLOW_ALL,
+	TEXT("//"),		TEXT(""),		EMP_LINE_AFTER,		&(color.Character.Comment.Conf),	0,	3,	PERMIT_LEVEL(0)|PERMIT_LEVEL(5), EMP_IND_ALLOW_ALL,
 
 	// Label
-	"*",		"",		EMP_LINE_AFTER,		&(color.Character.Label.Conf),	EMPFLAG_HEAD,	5,	PERMIT_LEVEL(0), EMP_IND_ASCII_LETTER|EMP_IND_UNDERBAR,
+	TEXT("*"),		TEXT(""),		EMP_LINE_AFTER,		&(color.Character.Label.Conf),	EMPFLAG_HEAD,	5,	PERMIT_LEVEL(0), EMP_IND_ASCII_LETTER|EMP_IND_UNDERBAR,
 
 	// End of table	
 	NULL
@@ -56,11 +57,11 @@ DEF_CLASSIFY_TABLE DefClassifyTable[] = {
 
 // Table of type returned from hspcmp.dll 
 static TYPE_TABLE TypeTable[] = {
-	"sys|macro",	&(color.Character.Macro.Conf),			EMPFLAG_NON_CS,
-	"sys|func",		&(color.Character.Function.Conf),		EMPFLAG_NON_CS,
-	"sys|func|1",	&(color.Character.Function.Conf),		EMPFLAG_NON_CS,
-	"sys|func|2",	&(color.Character.Function.Conf),		EMPFLAG_NON_CS,
-	"pre|func",		&(color.Character.Preprocessor.Conf),	0,
+	TEXT("sys|macro"),	&(color.Character.Macro.Conf),			EMPFLAG_NON_CS,
+	TEXT("sys|func"),		&(color.Character.Function.Conf),		EMPFLAG_NON_CS,
+	TEXT("sys|func|1"),	&(color.Character.Function.Conf),		EMPFLAG_NON_CS,
+	TEXT("sys|func|2"),	&(color.Character.Function.Conf),		EMPFLAG_NON_CS,
+	TEXT("pre|func"),		&(color.Character.Preprocessor.Conf),	0,
 	NULL
 };
 
@@ -83,11 +84,11 @@ extern DLLFUNC hsc3_getsym;
 extern DLLFUNC hsc3_make;
 extern DLLFUNC hsc3_messize;
 
-extern char szTitleName[_MAX_FNAME + _MAX_EXT] ;
+extern TCHAR szTitleName[_MAX_FNAME + _MAX_EXT] ;
 extern HWND hwndTab;
 extern int hsp_extmacro;
 
-char *filebuf;
+LPTSTR filebuf;
 
 FileList filelist;
 
@@ -102,7 +103,7 @@ int TableCompare(const void *pTable1, const void *pTable2)
 void InitClassify()
 {
 	int bufsize;
-	char *buf, *line, name[256], type[256];
+	TCHAR *buf,*line, name[256], type[256];
 
 	int nCTSize = 0;
 /*
@@ -121,13 +122,13 @@ void InitClassify()
 	}
 	fclose(fp);
 */
-	hsc_ini( 0,(int)"hsptmp", 0,0 );
-	hsc_refname( 0,(int)(szTitleName[0] == '\0' ? "???" : szTitleName), 0,0 );
-	hsc_objname( 0,(int)"obj", 0,0 );
+	hsc_ini( 0,(int)TEXT("hsptmp"), 0,0 );
+	hsc_refname( 0,(int)(szTitleName[0] == TEXT('\0') ? TEXT("???") : szTitleName), 0,0 );
+	hsc_objname( 0,(int)TEXT("obj"), 0,0 );
 	//hsc_comp( 1,1,0,0 );
 	hsc3_getsym(0, 0, 0, 0);
 	hsc3_messize((int)&bufsize, 0, 0, 0);
-	buf = (char *)malloc(bufsize+1);
+	buf = (TCHAR*)malloc((bufsize+1)*sizeof(TCHAR));
 	hsc_getmes((int)buf, 0, 0, 0);
 
 	int tableCapacity = DefClassifyTableSize() + getStrLinesSize(buf) + 1;
@@ -147,16 +148,16 @@ void InitClassify()
     
 	line = buf;
 	for(;;){
-		if(sscanf(line, "%s\t,%s", name, type) == 2){
+		if(_stscanf(line, TEXT("%s\t,%s"), name, type) == 2){
 			if(nCTSize >= tableCapacity){
-				msgboxf(0, "色分けの個数が制限に達しました。\n\"%s\"以降は色分けされません。"
-					, "エラー", MB_OK | MB_ICONERROR, name);
+				msgboxf(0, TEXT("色分けの個数が制限に達しました。\n\"%s\"以降は色分けされません。")
+					, TEXT("エラー"), MB_OK | MB_ICONERROR, name);
 				break;
 			}
 			for(TYPE_TABLE *lpTT = TypeTable; lpTT->Type; lpTT++){
-				if(!strcmp(type, lpTT->Type)){
+				if(!_tcscmp(type, lpTT->Type)){
 					lstrcpy(ClassifyTable[nCTSize].Word1, name);
-					lstrcpy(ClassifyTable[nCTSize].Word2, "");
+					lstrcpy(ClassifyTable[nCTSize].Word2, TEXT(""));
 					ClassifyTable[nCTSize].Type   = EMP_WORD;
 					ClassifyTable[nCTSize].color  = lpTT->color;
 					ClassifyTable[nCTSize].Status = /* | F_SE_INDEPENDENCE_B*/lpTT->Status;	// 2008-02-17 Shark++ 代替機能不明
@@ -169,14 +170,14 @@ void InitClassify()
 			}
 		}
 
-		while(*line != '\0' && *line != '\n') line++;
-		if(*line == '\0') break;
+		while(*line != TEXT('\0') && *line != TEXT('\n')) line++;
+		if(*line == TEXT('\0')) break;
 		line++;
 	}
 	free(buf);
 
 	qsort(ClassifyTable, nCTSize, sizeof(CLASSIFY_TABLE), TableCompare);
-	lstrcpy(ClassifyTable[nCTSize].Word1, "");
+	lstrcpy(ClassifyTable[nCTSize].Word1, TEXT(""));
 }
 
 
@@ -184,7 +185,7 @@ void InitClassify()
 void SetClassify(int FootyID)
 {
 	// 2008-02-17 Shark++ 要動作確認
-	for(CLASSIFY_TABLE *lpCT = ClassifyTable; lpCT->Word1[0] != '\0'; lpCT++) {
+	for(CLASSIFY_TABLE *lpCT = ClassifyTable; lpCT->Word1[0] != TEXT('\0'); lpCT++) {
 		Footy2AddEmphasis(FootyID, lpCT->Word1, *lpCT->Word2 ? lpCT->Word2 : NULL, lpCT->Type, 
 			lpCT->Status, lpCT->Level, lpCT->pLevel, lpCT->Ind,
 		//	lpCT->Status, lpCT->Level, PERMIT_LEVEL(lpCT->pLevel), EMP_IND_ALLOW_ALL,

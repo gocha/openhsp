@@ -9,7 +9,7 @@
 #include "resource.h"
 
 extern BOOL bComboBox;
-extern char szTbStrings[];
+extern TCHAR szTbStrings[];
 extern HINSTANCE hInst;
 extern HWND hwndEdit;
 extern HWND hwndCombo;
@@ -60,8 +60,8 @@ void CopyToolTipText (LPTOOLTIPTEXT lpttt)
      int iButton = (int)lpttt->hdr.idFrom ;
      int cb ;
      int cMax ;
-     LPSTR pString ;
-     LPSTR pDest = lpttt->lpszText ;
+     LPTSTR pString ;
+     LPTSTR pDest = lpttt->lpszText ;
 
      // Check for combo box window handles
      if (lpttt->uFlags & TTF_IDISHWND)
@@ -69,7 +69,7 @@ void CopyToolTipText (LPTOOLTIPTEXT lpttt)
           if ((iButton == (int) hwndCombo) ||
               (iButton == (int) hwndEdit))
                {
-               lstrcpy (pDest, "1-2-3 ComboBox") ;
+               lstrcpy (pDest, TEXT("1-2-3 ComboBox")) ;
                return ;
                }
           }
@@ -87,7 +87,7 @@ void CopyToolTipText (LPTOOLTIPTEXT lpttt)
      // To be safe, count number of strings in text
      pString = szTbStrings ;
      cMax = 0 ;
-     while (*pString != '\0')
+     while (*pString != TEXT('\0'))
           {
           cMax++ ;
           cb = lstrlen (pString) ;
@@ -97,7 +97,7 @@ void CopyToolTipText (LPTOOLTIPTEXT lpttt)
      // Check for valid parameter
      if (iButton > cMax)
           {
-          pString = "Invalid Button Index" ;
+          pString = TEXT("Invalid Button Index") ;
           }
      else
           {

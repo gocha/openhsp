@@ -15,7 +15,7 @@
  */
 bool CTextConverter_UTF8::ToUnicode(const char* pChar,size_t nSize)
 {
-	size_t i,nStartPos;
+/*	size_t i,nStartPos;
 	unsigned char c;
 	int nAllocSize = 0;
 	int nUnicodePos = 0;
@@ -142,6 +142,29 @@ bool CTextConverter_UTF8::ToUnicode(const char* pChar,size_t nSize)
 
 	// ステップ４：NULL文字を書き込む
 	((wchar_t*)m_pOutputText)[nUnicodePos] = L'\0';
+	return true;*/	
+	// BOMがあったら無視する
+	int nAllocSize = 0;
+	int nStartPos = 0;
+	if (strncmp(pChar,"\xEF\xBB\xBF",3) == 0)
+	{
+		m_bIncludeBOM = true;
+		nStartPos=3;
+	}
+	else
+	{
+		m_bIncludeBOM = false;
+		nStartPos=0;
+	}
+	// ステップ１：サイズを求める
+	nAllocSize = MultiByteToWideChar(CP_UTF8, 0, pChar + nStartPos, nSize, (LPWSTR)NULL, 0) * sizeof(wchar_t);
+	// ステップ２：メモリを確保
+	if (!Alloc(nAllocSize + sizeof(wchar_t)))
+		return false;
+	// ステップ３：変換
+	MultiByteToWideChar(CP_UTF8, 0, pChar + nStartPos, nSize, (LPWSTR)m_pOutputText, nAllocSize);
+	// ステップ４：NULL文字を書き込む
+	*((wchar_t*)(m_pOutputText+nAllocSize)) = L'\0';
 	return true;
 }
 
@@ -153,7 +176,7 @@ bool CTextConverter_UTF8::ToUnicode(const char* pChar,size_t nSize)
  */
 bool CTextConverter_UTF8::ToMulti(const wchar_t *pChar,size_t nSize)
 {
-	size_t i;
+/*	size_t i;
 	wchar_t w;
 	int nAllocSize = 0;
 	int nUtf8Pos = 0;
@@ -206,6 +229,24 @@ bool CTextConverter_UTF8::ToMulti(const wchar_t *pChar,size_t nSize)
 
 	// ステップ４：NULL文字を書き込む
 	m_pOutputText[nUtf8Pos] = '\0';
+	return true;*/
+	int nAllocSize = 0;
+	int nUtf8Pos = 0;
+	// ステップ１：サイズを求める
+	if (m_bIncludeBOM)nAllocSize += sizeof(char)*3;
+	nAllocSize = WideCharToMultiByte(CP_UTF8, NULL, pChar, nSize, NULL, 0, NULL, NULL);
+	// ステップ２：メモリを確保
+	if (!Alloc(nAllocSize + sizeof(char)))
+		return false;
+	// ステップ３：変換
+	if (m_bIncludeBOM)
+	{
+		memcpy(m_pOutputText, "\xEF\xBB\xBF", 3);
+		nUtf8Pos = 3;
+	}
+	WideCharToMultiByte(CP_UTF8, NULL, pChar, nSize, m_pOutputText + nUtf8Pos, nAllocSize - nUtf8Pos, NULL, NULL);
+	// ステップ４：NULL文字を書き込む
+	m_pOutputText[nAllocSize] = '\0';
 	return true;
 }
 

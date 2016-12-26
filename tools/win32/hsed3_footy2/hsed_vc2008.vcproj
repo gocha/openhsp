@@ -2,11 +2,11 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="9.00"
-	Name="hsed"
-	ProjectGUID="{A599DDBE-AF26-446B-A144-17BF357A4E60}"
-	RootNamespace="hsed"
+	Name="hsed3"
+	ProjectGUID="{F3CBF6C4-1815-495E-88B6-977EC741A0D1}"
+	RootNamespace="hsed_vc2008"
 	Keyword="Win32Proj"
-	TargetFrameworkVersion="131072"
+	TargetFrameworkVersion="196613"
 	>
 	<Platforms>
 		<Platform
@@ -18,10 +18,9 @@
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory="Debug"
-			IntermediateDirectory="Debug"
+			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
+			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="1"
-			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			CharacterSet="2"
 			>
 			<Tool
@@ -45,10 +44,9 @@
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
-				RuntimeLibrary="1"
+				RuntimeLibrary="3"
 				UsePrecompiledHeader="0"
-				WarningLevel="4"
-				Detect64BitPortabilityProblems="true"
+				WarningLevel="3"
 				DebugInformationFormat="4"
 			/>
 			<Tool
@@ -62,15 +60,9 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="comsuppw.lib"
-				OutputFile="$(OutDir)/hsed3.exe"
 				LinkIncremental="2"
-				IgnoreDefaultLibraryNames="libc.lib"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile="$(OutDir)/hsed.pdb"
 				SubSystem="2"
-				RandomizedBaseAddress="1"
-				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -78,7 +70,6 @@
 			/>
 			<Tool
 				Name="VCManifestTool"
-				AdditionalManifestFiles="$(SolutionDir)xpstyle.xml"
 			/>
 			<Tool
 				Name="VCXDCMakeTool"
@@ -98,11 +89,11 @@
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="Release"
-			IntermediateDirectory="Release"
+			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
+			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="1"
-			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			CharacterSet="2"
+			WholeProgramOptimization="1"
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
@@ -121,17 +112,14 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				Optimization="3"
-				InlineFunctionExpansion="1"
-				OmitFramePointers="true"
+				Optimization="2"
+				EnableIntrinsicFunctions="true"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS"
-				StringPooling="true"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
-				Detect64BitPortabilityProblems="true"
-				DebugInformationFormat="3"
+				DebugInformationFormat="0"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -144,16 +132,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="comsuppw.lib"
-				OutputFile="$(OutDir)/hsed3.exe"
 				LinkIncremental="1"
-				IgnoreDefaultLibraryNames="libc.lib"
 				GenerateDebugInformation="false"
 				SubSystem="2"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
-				RandomizedBaseAddress="1"
-				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -161,7 +144,82 @@
 			/>
 			<Tool
 				Name="VCManifestTool"
-				AdditionalManifestFiles="$(SolutionDir)xpstyle.xml"
+				AdditionalManifestFiles="$(InputDir)XPStyle.xml"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
+		</Configuration>
+		<Configuration
+			Name="Release-unicode|Win32"
+			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
+			IntermediateDirectory="$(ConfigurationName)"
+			ConfigurationType="1"
+			CharacterSet="1"
+			WholeProgramOptimization="1"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+			/>
+			<Tool
+				Name="VCCLCompilerTool"
+				Optimization="2"
+				EnableIntrinsicFunctions="true"
+				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS"
+				RuntimeLibrary="0"
+				EnableFunctionLevelLinking="true"
+				UsePrecompiledHeader="0"
+				WarningLevel="3"
+				DebugInformationFormat="0"
+			/>
+			<Tool
+				Name="VCManagedResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
+			<Tool
+				Name="VCLinkerTool"
+				LinkIncremental="1"
+				GenerateDebugInformation="false"
+				SubSystem="2"
+				OptimizeReferences="2"
+				EnableCOMDATFolding="2"
+				TargetMachine="1"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCManifestTool"
+				AdditionalManifestFiles="$(InputDir)XPStyle.xml"
 			/>
 			<Tool
 				Name="VCXDCMakeTool"
@@ -181,199 +239,239 @@
 		</Configuration>
 	</Configurations>
 	<References>
+		<ProjectReference
+			ReferencedProjectIdentifier="{1302D61E-A353-476F-877E-EF22741ABA68}"
+			RelativePathToProject=".\Footy2\Footy2_vc2008.vcproj"
+		/>
 	</References>
 	<Files>
 		<Filter
 			Name="ソース ファイル"
-			Filter="cpp;c;cxx;def;odl;idl;hpj;bat;asm"
+			Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
+			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath="aboutdlg.cpp"
+				RelativePath=".\AboutDlg.cpp"
 				>
 			</File>
 			<File
-				RelativePath="classify.cpp"
+				RelativePath=".\classify.cpp"
 				>
 			</File>
 			<File
-				RelativePath="config.cpp"
+				RelativePath=".\config.cpp"
 				>
 			</File>
 			<File
-				RelativePath="exttool.cpp"
+				RelativePath=".\exttool.cpp"
 				>
 			</File>
 			<File
-				RelativePath="filedlg.cpp"
+				RelativePath=".\filedlg.cpp"
 				>
 			</File>
 			<File
-				RelativePath="interface.cpp"
+				RelativePath=".\hscw.cpp"
 				>
 			</File>
 			<File
-				RelativePath="main.cpp"
+				RelativePath=".\interface.cpp"
 				>
 			</File>
 			<File
-				RelativePath="membuf.cpp"
+				RelativePath=".\main.cpp"
 				>
 			</File>
 			<File
-				RelativePath="packlist.cpp"
+				RelativePath=".\membuf.cpp"
 				>
 			</File>
 			<File
-				RelativePath="popfile.cpp"
+				RelativePath=".\packlist.cpp"
 				>
 			</File>
 			<File
-				RelativePath="popfind.cpp"
+				RelativePath=".\popfile.cpp"
 				>
 			</File>
 			<File
-				RelativePath="popfont.cpp"
+				RelativePath=".\popfind.cpp"
 				>
 			</File>
 			<File
-				RelativePath="poppad.cpp"
+				RelativePath=".\popfont.cpp"
 				>
 			</File>
 			<File
-				RelativePath="popprnt0.cpp"
+				RelativePath=".\poppad.cpp"
 				>
 			</File>
 			<File
-				RelativePath="statbar.cpp"
+				RelativePath=".\popprnt0.cpp"
 				>
 			</File>
 			<File
-				RelativePath="supio.cpp"
+				RelativePath=".\statbar.cpp"
 				>
 			</File>
 			<File
-				RelativePath="support.cpp"
+				RelativePath=".\supio.cpp"
 				>
 			</File>
 			<File
-				RelativePath="tabmanager.cpp"
+				RelativePath=".\support.cpp"
 				>
 			</File>
 			<File
-				RelativePath="toolbar.cpp"
+				RelativePath=".\tabmanager.cpp"
 				>
 			</File>
 			<File
-				RelativePath="tooltip.cpp"
+				RelativePath=".\toolbar.cpp"
 				>
 			</File>
 			<File
-				RelativePath="vbsregexp.c"
+				RelativePath=".\tooltip.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\vbsregexp.c"
 				>
 			</File>
 		</Filter>
 		<Filter
 			Name="ヘッダー ファイル"
-			Filter="h;hpp;hxx;hm;inl;inc"
+			Filter="h;hpp;hxx;hm;inl;inc;xsd"
+			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
-				RelativePath="aboutdlg.h"
+				RelativePath=".\AboutDlg.h"
 				>
 			</File>
 			<File
-				RelativePath="classify.h"
+				RelativePath=".\classify.h"
 				>
 			</File>
 			<File
-				RelativePath="comcthlp.h"
+				RelativePath=".\comcthlp.h"
 				>
 			</File>
 			<File
-				RelativePath="config.h"
+				RelativePath=".\config.h"
 				>
 			</File>
 			<File
-				RelativePath="exttool.h"
+				RelativePath=".\exttool.h"
 				>
 			</File>
 			<File
-				RelativePath="filedlg.h"
+				RelativePath=".\filedlg.h"
 				>
 			</File>
 			<File
-				RelativePath="footy2.h"
+				RelativePath=".\Footy2.h"
 				>
 			</File>
 			<File
-				RelativePath="hsed_config.h"
+				RelativePath=".\hscw.h"
 				>
 			</File>
 			<File
-				RelativePath="interface.h"
+				RelativePath=".\hsed_config.h"
 				>
 			</File>
 			<File
-				RelativePath="membuf.h"
+				RelativePath=".\interface.h"
 				>
 			</File>
 			<File
-				RelativePath="poppad.h"
+				RelativePath=".\membuf.h"
 				>
 			</File>
 			<File
-				RelativePath="resource.h"
+				RelativePath=".\poppad.h"
 				>
 			</File>
 			<File
-				RelativePath="supio.h"
+				RelativePath=".\resource.h"
 				>
 			</File>
 			<File
-				RelativePath="support.h"
+				RelativePath=".\supio.h"
 				>
 			</File>
 			<File
-				RelativePath="tabmanager.h"
+				RelativePath=".\support.h"
 				>
 			</File>
 			<File
-				RelativePath="vbsregexp.h"
+				RelativePath=".\tabmanager.h"
+				>
+			</File>
+			<File
+				RelativePath=".\vbsregexp.h"
 				>
 			</File>
 		</Filter>
 		<Filter
 			Name="リソース ファイル"
-			Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"
+			Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav"
+			UniqueIdentifier="{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}"
 			>
 			<File
-				RelativePath="ln.cur"
+				RelativePath=".\ln.cur"
 				>
 			</File>
 			<File
-				RelativePath="onipad.ico"
+				RelativePath=".\onipad.ico"
 				>
 			</File>
 			<File
-				RelativePath="poppad.rc"
+				RelativePath=".\Poppad.rc"
+				>
+				<FileConfiguration
+					Name="Release|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCResourceCompilerTool"
+						Culture="1041"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release-unicode|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCResourceCompilerTool"
+						Culture="1041"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\Poppadw.rc"
+				>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCResourceCompilerTool"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\toolbar.bmp"
 				>
 			</File>
 			<File
-				RelativePath="toolbar.bmp"
+				RelativePath=".\url.cur"
 				>
 			</File>
 			<File
-				RelativePath="url.cur"
-				>
-			</File>
-			<File
-				RelativePath="xpstyle.xml"
+				RelativePath=".\XPStyle.xml"
 				>
 			</File>
 		</Filter>
-		<File
-			RelativePath="memo.txt"
-			>
-		</File>
 	</Files>
 	<Globals>
 	</Globals>

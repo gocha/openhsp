@@ -28,13 +28,13 @@ DWORD dwToolBarStyles = WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS |
 extern HINSTANCE hInst ;
 
 #ifdef JPNMSG
-char szTbStrings[] = "新規\0ロード\0セーブ\0"
-                     "切り取り\0コピー\0貼り付け\0元に戻す\0やり直し\0"
-					 "検索\0ＨＳＰ実行\0オブジェクト作成\0外部ファイル実行\0";
+TCHAR szTbStrings[] = TEXT("新規\0ロード\0セーブ\0")
+                     TEXT("切り取り\0コピー\0貼り付け\0元に戻す\0やり直し\0")
+					 TEXT("検索\0ＨＳＰ実行\0オブジェクト作成\0外部ファイル実行\0");
 #else
-char szTbStrings[] = "New\0Open\0Save\0"
-                     "Cut\0Copy\0Paste\0Undo\0Redo\0"
-					 "Find\0Run\0Make Object\0External file\0";
+TCHAR szTbStrings[] = TEXT("New\0Open\0Save\0")
+                     TEXT("Cut\0Copy\0Paste\0Undo\0Redo\0")
+					 TEXT("Find\0Run\0Make Object\0External file\0");
 #endif
 
 TBBUTTON tbb[] = 
@@ -109,10 +109,10 @@ TBADDBITMAP tbStdSmall[] =
      } ;
 
 //-------------------------------------------------------------------
-LPSTR GetString (int iString)
+LPTSTR GetString (int iString)
      {
      int i, cb ;
-     LPSTR pString ;
+     LPTSTR pString ;
 
      // Cycle through to requested string
      pString = szTbStrings ;

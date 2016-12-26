@@ -15,7 +15,7 @@ typedef BOOL (CALLBACK *DLLFUNC)(int, int, int, int);
 
 //
 // グローバル変数
-static const char *szInterfaceName = HSED_INTERFACE_NAME;
+static LPCTSTR szInterfaceName = HSED_INTERFACE_NAME;
 
 //
 // 外部変数
@@ -277,12 +277,12 @@ static LRESULT InterfaceProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 // hspcmp.dll のバージョンを取得
 static inline LRESULT GetHspcmpVer(HANDLE hPipe)
 {
-	char szRefstr[4096];
+	TCHAR szRefstr[4096];
 	DWORD dwNumberOfBytesWritten;
 	BOOL bRet;
 
 	hsc_ver(0, 0, 0, (int)szRefstr);
-	bRet = WriteFile(hPipe, szRefstr, lstrlen(szRefstr) + 1, &dwNumberOfBytesWritten, NULL);
+	bRet = WriteFile(hPipe, szRefstr, (lstrlen(szRefstr) + 1)*sizeof(TCHAR), &dwNumberOfBytesWritten, NULL);
 	return bRet ? dwNumberOfBytesWritten : -1;
 }
 
@@ -310,7 +310,7 @@ static inline LRESULT GetFilePath(int nTabID, HANDLE hPipe)
 	DWORD dwNumberOfBytesWritten;
 	BOOL bRet;
 	if(lpTabInfo == NULL) return -1;
-	bRet = WriteFile(hPipe, lpTabInfo->FileName, lstrlen(lpTabInfo->FileName), &dwNumberOfBytesWritten, NULL);
+	bRet = WriteFile(hPipe, lpTabInfo->FileName, lstrlen(lpTabInfo->FileName)*sizeof(TCHAR), &dwNumberOfBytesWritten, NULL);
 	return bRet ? 0 : -1;
 }
 
@@ -327,21 +327,21 @@ static inline LRESULT GetFootyID(int nTabID)
 	return lpTabInfo->FootyID;
 }
 
-static inline int ReadPipe(HANDLE hPipe, char **pbuffer)
+static inline int ReadPipe(HANDLE hPipe, LPTSTR *pbuffer)
 {
 	DWORD dwSize, dwNumberOfBytesRead;
-	char *lpBuffer;
+	LPTSTR lpBuffer;
 
 	if(!PeekNamedPipe(hPipe, NULL, 0, NULL, &dwSize, NULL)) {
 		return 1;
 	}
-	lpBuffer = (char *)malloc(dwSize + 1);
+	lpBuffer = (LPTSTR )malloc((dwSize + 1)*sizeof(TCHAR));
 	*pbuffer = lpBuffer;
 	if(lpBuffer == NULL) return 1;
 	if(dwSize > 0) {
 		ReadFile(hPipe, lpBuffer, dwSize, &dwNumberOfBytesRead, NULL);
 	}
-	lpBuffer[dwSize] = '\0';
+	lpBuffer[dwSize] = TEXT('\0');
 	return 0;
 }
 
@@ -350,7 +350,7 @@ static inline int ReadPipe(HANDLE hPipe, char **pbuffer)
 static inline LRESULT SetText(int nFootyID, HANDLE hPipe)
 {
 	int nRet;
-	char *lpBuffer;
+	LPTSTR lpBuffer;
 
 	if(ReadPipe(hPipe, &lpBuffer)){
 		return -3;
@@ -373,7 +373,7 @@ static inline LRESULT SetText(int nFootyID, HANDLE hPipe)
 static inline LRESULT SetSelText(int nFootyID, HANDLE hPipe)
 {
 	int nRet;
-	char *lpBuffer;
+	LPTSTR lpBuffer;
 
 	if(ReadPipe(hPipe, &lpBuffer)){
 		return -3;
@@ -395,10 +395,10 @@ static inline LRESULT GetText(int nFootyID, HANDLE hPipe)
 {
 	int nRet;
 	DWORD dwSize, dwNumberOfBytesWritten;
-	char *lpBuffer;
+	LPTSTR lpBuffer;
 
 	dwSize = Footy2GetTextLength(nFootyID, LM_CRLF);
-	lpBuffer = (char *)malloc(dwSize + 1);
+	lpBuffer = (LPTSTR )malloc((dwSize + 1)*sizeof(TCHAR));
 	if(lpBuffer == NULL) return -1;
 	nRet = Footy2GetText(nFootyID, lpBuffer, LM_CRLF, dwSize);
 	if (nRet == FOOTY2ERR_NONE && !WriteFile(hPipe, lpBuffer, dwSize, &dwNumberOfBytesWritten, NULL)){

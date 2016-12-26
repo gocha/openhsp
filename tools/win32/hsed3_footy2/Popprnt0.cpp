@@ -51,9 +51,9 @@ BOOL CALLBACK AbortProc (HDC /*hPrinterDC*/, int /*iCode*/)
      }
 
 BOOL PopPrntPrintFile (HINSTANCE hInst, HWND hwnd, HWND /*hwndEdit*/, 
-                                                   LPSTR szTitleName)
+                                                   LPTSTR szTitleName)
      {
-     static DOCINFO  di = { sizeof (DOCINFO), "", NULL } ;
+     static DOCINFO  di = { sizeof (DOCINFO), TEXT(""), NULL } ;
      static PRINTDLG pd ;
      BOOL            bSuccess ;
      int             yChar, iCharsPerLine, iLinesPerPage, iTotalLines,
@@ -92,14 +92,14 @@ BOOL PopPrntPrintFile (HINSTANCE hInst, HWND hwnd, HWND /*hwndEdit*/,
 
 	 TCHAR szLineNumber[64];
 	 int nLineNumberCharWidth = 1;
-	 _stprintf(szLineNumber, "%d:", iTotalLines);
+	 _stprintf(szLineNumber, TEXT("%d:"), iTotalLines);
 	 nLineNumberCharWidth = lstrlen(szLineNumber) - 1;
 
 //	 DEVMODE dm;
 //	 GetDeviceCaps(
 
 	 HFONT hFont = CreateFont(-MulDiv(10, GetDeviceCaps(pd.hDC, LOGPIXELSY), 72), 0, 0, 0, FW_DONTCARE, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-				OUT_CHARACTER_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH, "ÇlÇr ÉSÉVÉbÉN");
+				OUT_CHARACTER_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH, TEXT("ÇlÇr ÉSÉVÉbÉN"));
 	 HFONT hFoltOld = (HFONT)SelectObject(pd.hDC, hFont);
 
 	 RECT rc = {0};
@@ -123,7 +123,7 @@ BOOL PopPrntPrintFile (HINSTANCE hInst, HWND hwnd, HWND /*hwndEdit*/,
      bSuccess   = TRUE ;
      bUserAbort = FALSE ;
 
-     hDlgPrint = CreateDialog (hInst, (LPCTSTR) "PrintDlgBox", hwnd, (DLGPROC)PrintDlgProc) ;
+     hDlgPrint = CreateDialog (hInst, (LPCTSTR) TEXT("PrintDlgBox"), hwnd, (DLGPROC)PrintDlgProc) ;
      SetDlgItemText (hDlgPrint, IDD_FNAME, szTitleName) ;
 
      SetAbortProc (pd.hDC, (ABORTPROC)AbortProc) ;
@@ -163,7 +163,7 @@ BOOL PopPrntPrintFile (HINSTANCE hInst, HWND hwnd, HWND /*hwndEdit*/,
 					//		  TextOut(pd.hDC, 0, yChar * iLine, pstrBuffer, 
 					//			  FootyGetLineLen(activeFootyID, iLineNum+1));
 							  // çsî‘çÜ
-							  _stprintf(szLineNumber, "%*d ", nLineNumberCharWidth, iLineNum + 1);
+							  _stprintf(szLineNumber, TEXT("%*d "), nLineNumberCharWidth, iLineNum + 1);
 							  TextOut(pd.hDC, 0, yChar * iLine, szLineNumber, lstrlen(szLineNumber));
 							  // çsì‡óe
 							  LPCWSTR pstrBufferW = Footy2GetLineW(activeFootyID, iLineNum);	// 2008-02-28 Shark++ ëSäpï∂éöÇ™ïÖÇÈÅEê‹ÇËï‘ÇµÇ™(å≥Ç©ÇÁ)ñ¢é¿ëï

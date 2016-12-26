@@ -52,8 +52,8 @@ typedef struct tagMyColor{
 } MYCOLOR;
 
 typedef struct tagClassifyTable{
-	char Word1[256];
-	char Word2[256];
+	TCHAR Word1[256];
+	TCHAR Word2[256];
 	int Type;
 	COLORREF *color;
 	int Status;

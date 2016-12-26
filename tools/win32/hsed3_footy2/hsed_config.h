@@ -28,32 +28,32 @@
 //		システム関連ラベル
 //
 #ifdef HSPVER3
-#define FILE_HSPCMP "hspcmp.dll"
-#define DEFAULT_RUNTIME "hsp3.exe"   // HSP3 runtime
+#define FILE_HSPCMP TEXT("hspcmp.dll")
+#define DEFAULT_RUNTIME TEXT("hsp3.exe")   // HSP3 runtime
 #define HSP_VERSION 3
-#define REG_SUFFIX "3_3"                      // Suffix of registry section name 
-#define INI_FILE "hsed3config.ini"            // INI section name
-#define MUTEX_NAME  "HSPEditor3_Mutex"        // Name of Mutex object
-#define PROP_NAME   "HSPEditor3_Property"     // Name of Property list
+#define REG_SUFFIX TEXT("3_3")                      // Suffix of registry section name 
+#define INI_FILE TEXT("hsed3config.ini")            // INI section name
+#define MUTEX_NAME  TEXT("HSPEditor3_Mutex")        // Name of Mutex object
+#define PROP_NAME   TEXT("HSPEditor3_Property")     // Name of Property list
 
 #else
 
-#define FILE_HSPCMP "hspcmp.dll"
-#define DEFAULT_RUNTIME "hsp2.exe"   // HSP2 runtime
+#define FILE_HSPCMP TEXT("hspcmp.dll")
+#define DEFAULT_RUNTIME TEXT("hsp2.exe")   // HSP2 runtime
 #define REG_SUFFIX                            // Suffix of registry section name
-#define INI_FILE "hsp2config.ini"             // INI file name
-#define MUTEX_NAME  "HSPEditor2_Mutex"        // Name of Mutex object
-#define PROP_NAME   "HSPEditor2_Property"     // Name of Property list
+#define INI_FILE TEXT("hsp2config.ini")             // INI file name
+#define MUTEX_NAME  TEXT("HSPEditor2_Mutex")        // Name of Mutex object
+#define PROP_NAME   TEXT("HSPEditor2_Property")     // Name of Property list
 #endif
 
 //		デフォルトの文字列
 //
 #ifdef JPNMSG
-#define UNTITLED "(無題)"
-#define TABUNTITLED "無題"
+#define UNTITLED TEXT("(無題)")
+#define TABUNTITLED TEXT("無題")
 #else
-#define UNTITLED "(untitled)"
-#define TABUNTITLED "untitled"
+#define UNTITLED TEXT("(untitled)")
+#define TABUNTITLED TEXT("untitled")
 #endif
 
 //		デフォルトの値
@@ -61,6 +61,6 @@
 
 //		インターフェイス用
 //
-#define HSED_INTERFACE_NAME "HSPEditorInterface"
+#define HSED_INTERFACE_NAME TEXT("HSPEditorInterface")
 
 #endif

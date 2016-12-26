@@ -87,5 +87,5 @@ void PutLineNumber( void );
 
 // DLL functions
 
-int dll_ini( char *libname );
+int dll_ini( LPTSTR libname );
 void dll_bye( void );

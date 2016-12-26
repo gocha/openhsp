@@ -15,10 +15,10 @@
 typedef struct tagExtensionToolInformation{
 	bool Used;
 
-	char ToolName[SIZE_OF_TOOLNAME];
-	char FileName[SIZE_OF_FILENAME];
-	char CmdLine[SIZE_OF_CMDLINE];
-	char WorkDir[SIZE_OF_WORKDIR];
+	TCHAR ToolName[SIZE_OF_TOOLNAME];
+	TCHAR FileName[SIZE_OF_FILENAME];
+	TCHAR CmdLine[SIZE_OF_CMDLINE];
+	TCHAR WorkDir[SIZE_OF_WORKDIR];
 	bool ShowOnMainMenu;
 	bool ShowOnPopupMenu;
 	bool ExecOnStartup;

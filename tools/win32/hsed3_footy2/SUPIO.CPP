@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <tchar.h>
 #include <stdarg.h>
 #include <direct.h>
 
@@ -18,40 +19,40 @@
 //		basic C I/O support
 //
 
-char *mem_ini( int size ) { return (char *)malloc(size); }
+LPTSTR mem_ini( int size ) { return (LPTSTR )malloc(size); }
 void mem_bye( void *ptr ) { free(ptr); }
-int mem_load( char *fname, void *mem, int msize )
+int mem_load( LPTSTR fname, void *mem, int msize )
 {
 	FILE *fp;
 	int flen;
-	fp=fopen(fname,"rb");
+	fp=_tfopen(fname,TEXT("rb"));
 	if (fp==NULL) return -1;
 	flen = (int)fread( mem, 1, msize, fp );
 	fclose(fp);
 	return flen;
 }
-int mem_save( char *fname, void *mem, int msize )
+int mem_save( LPTSTR fname, void *mem, int msize )
 {
 	FILE *fp;
 	int flen;
-	fp=fopen(fname,"wb");
+	fp=_tfopen(fname,TEXT("wb"));
 	if (fp==NULL) return -1;
 	flen = (int)fwrite( mem, 1, msize, fp );
 	fclose(fp);
 	return flen;
 }
 
-int filecopy( char *fname, char *sname )
+int filecopy( LPTSTR fname, LPTSTR sname )
 {
 	FILE *fp;
 	FILE *fp2;
 	int flen, rval;
 	int max=0x8000;
-	char *mem;
+	LPTSTR mem;
 	rval=1;
 	mem=mem_ini(max);
-	fp=fopen(fname,"rb");if (fp==NULL) goto jobov;
-	fp2=fopen(sname,"wb");if (fp2==NULL) goto jobov;
+	fp=_tfopen(fname,TEXT("rb"));if (fp==NULL) goto jobov;
+	fp2=_tfopen(sname,TEXT("wb"));if (fp2==NULL) goto jobov;
 	for(;;) {
 		flen = (int)fread( mem, 1, max, fp );
 		if (flen==0) break;
@@ -65,21 +66,21 @@ jobov:
 	return rval;
 }
 
-static	char *ermes;			// info message buffer
+static	LPTSTR ermes;			// info message buffer
 static	int mespt;				// info message buffer (index)
 #define	maxmes 2048				// message buffer max
 
-void prtini( char *mes )
+void prtini( LPTSTR mes )
 {
 	ermes=mes;
 	mespt=0;
 }
 
-void prt( char *mes )
+void prt( LPTSTR mes )
 {
 	//		message buffer send
 	//
-	char a1;
+	TCHAR a1;
 	int a;
 	a=0;
 	for(;;) {
@@ -92,28 +93,28 @@ void prt( char *mes )
 	}
 }
 
-void strcase( char *str )
+void strcase( LPTSTR str )
 {
 	//	string case to lower
 	//
 	int a;
-	char a1;
-	unsigned char *ss;
-	ss=(unsigned char *)str;
+	TCHAR a1;
+	_TUCHAR *ss;
+	ss=(_TUCHAR*)str;
 	a=0;
 	for(;;) {
-		a1=(char)tolower(ss[a]);
+		a1=(_TUCHAR)tolower(ss[a]);
 		if (a1==0) break;
 		ss[a++]=a1;
 	}
 }
 
-int tstrcmp( char *str1, char *str2 )
+int tstrcmp( LPTSTR str1, LPTSTR str2 )
 {
 	//	string compare (0=not same/-1=same)
 	//
 	int ap;
-	char as;
+	TCHAR as;
 	ap=0;
 	for(;;) {
 		as=str1[ap];
@@ -125,33 +126,33 @@ int tstrcmp( char *str1, char *str2 )
 }
 
 
-void getpath( char *stmp, char *outbuf, int p2 )
+void getpath( LPTSTR stmp, LPTSTR outbuf, int p2 )
 {
-	char *p;
-	char p_drive[_MAX_PATH];
-	char p_dir[_MAX_DIR];
-	char p_fname[_MAX_FNAME];
-	char p_ext[_MAX_EXT];
+	LPTSTR p;
+	TCHAR p_drive[_MAX_PATH];
+	TCHAR p_dir[_MAX_DIR];
+	TCHAR p_fname[_MAX_FNAME];
+	TCHAR p_ext[_MAX_EXT];
 
 	p = outbuf;
 	if (p2&16) strcase( stmp );
-	_splitpath( stmp, p_drive, p_dir, p_fname, p_ext );
-	strcat( p_drive, p_dir );
+	_tsplitpath( stmp, p_drive, p_dir, p_fname, p_ext );
+	_tcscat( p_drive, p_dir );
 	if ( p2&8 ) {
-		strcpy( stmp, p_fname ); strcat( stmp, p_ext );
+		_tcscpy( stmp, p_fname ); _tcscat( stmp, p_ext );
 	} else if ( p2&32 ) {
-		strcpy( stmp, p_drive );
+		_tcscpy( stmp, p_drive );
 	}
 	switch( p2&7 ) {
 	case 1:			// Name only ( without ext )
-		stmp[ strlen(stmp)-strlen(p_ext) ] = 0;
-		strcpy( p, stmp );
+		stmp[ _tcslen(stmp)-_tcslen(p_ext) ] = 0;
+		_tcscpy( p, stmp );
 		break;
 	case 2:			// Ext only
-		strcpy( p, p_ext );
+		_tcscpy( p, p_ext );
 		break;
 	default:		// Direct Copy
-		strcpy( p, stmp );
+		_tcscpy( p, stmp );
 		break;
 	}
 }

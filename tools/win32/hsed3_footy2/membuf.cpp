@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <tchar.h>
+#include <windows.h>
 #include "membuf.h"
 
 //-------------------------------------------------------------
@@ -24,7 +26,7 @@ void CMemBuf::InitMemBuf( int sz )
 		size = 0x10000;
 	}
 	limit_size = size;
-	mem_buf = (char *)malloc( limit_size );
+	mem_buf = (LPTSTR )malloc( limit_size );
 	mem_buf[0] = 0;
 	name[0] = 0;
 	cur = 0;
@@ -46,14 +48,14 @@ void CMemBuf::InitIndexBuf( int sz )
 }
 
 
-char *CMemBuf::PreparePtr( int sz )
+LPTSTR CMemBuf::PreparePtr( int sz )
 {
 	//	バッファ拡張チェック
 	//	(szサイズを書き込み可能なバッファを返す)
 	//		(return:もとのバッファ先頭ptr)
 	//
 	int i;
-	char *p;
+	LPTSTR p;
 	if ( (cur+sz) < size ) {
 		p = mem_buf + cur;
 		cur += sz;
@@ -62,7 +64,7 @@ char *CMemBuf::PreparePtr( int sz )
 	//	expand buffer (VCのreallocは怖いので使わない)
 	i = size;
 	while( i<=(cur+sz) ) i+=limit_size;
-	p = (char *)malloc( i );
+	p = (LPTSTR )malloc( i );
 	memcpy( p, mem_buf, size );
 	free( mem_buf );
 	size = i;
@@ -111,10 +113,10 @@ void CMemBuf::Put( short data )
 }
 
 
-void CMemBuf::Put( char data )
+void CMemBuf::Put( TCHAR data )
 {
-	char *p;
-	p = PreparePtr( 1 );
+	LPTSTR p;
+	p = PreparePtr( sizeof(TCHAR) );
 	*p = data;
 }
 
@@ -122,7 +124,7 @@ void CMemBuf::Put( char data )
 void CMemBuf::Put( unsigned char data )
 {
 	unsigned char *p;
-	p = (unsigned char *) PreparePtr( 1 );
+	p = (unsigned char * ) PreparePtr( 1 );
 	*p = data;
 }
 
@@ -143,60 +145,60 @@ void CMemBuf::Put( double data )
 }
 
 
-void CMemBuf::PutStr( char *data )
+void CMemBuf::PutStr( LPTSTR data )
 {
-	char *p;
-	p = PreparePtr( (int)strlen(data) );
-	strcpy( p, data );
+	LPTSTR p;
+	p = PreparePtr( (int)_tcslen(data)*sizeof(TCHAR) );
+	_tcscpy( p, data );
 }
 
 
-void CMemBuf::PutStrBlock( char *data )
+void CMemBuf::PutStrBlock( LPTSTR data )
 {
-	char *p;
-	p = PreparePtr( (int)strlen(data)+1 );
-	strcpy( p, data );
+	LPTSTR p;
+	p = PreparePtr( (int)(_tcslen(data)+1)*sizeof(TCHAR) );
+	_tcscpy( p, data );
 }
 
 
 void CMemBuf::PutCR( void )
 {
-	char *p;
-	p = PreparePtr( 2 );
+	LPTSTR p;
+	p = PreparePtr( 2*sizeof(TCHAR) );
 	*p++ = 13; *p++ = 10;
 }
 
 
 void CMemBuf::PutData( void *data, int sz )
 {
-	char *p;
+	LPTSTR p;
 	p = PreparePtr( sz );
-	memcpy( p, (char *)data, sz );
+	memcpy( p, (LPTSTR )data, sz );
 }
 
 
-int CMemBuf::PutFile( char *fname )
+int CMemBuf::PutFile( LPTSTR fname )
 {
 	//		バッファに指定ファイルの内容を追加
 	//		(return:ファイルサイズ(-1=error))
 	//
-	char *p;
+	LPTSTR p;
 	int length;
 	FILE *ff;
 
-	ff=fopen( fname,"rb" );
+	ff=_tfopen( fname,TEXT("rb") );
 	if (ff==NULL) return -1;
 	fseek( ff,0,SEEK_END );
 	length=(int)ftell( ff );			// normal file size
 	fclose(ff);
 
 	p = PreparePtr( length+1 );
-	ff=fopen( fname,"rb" );
+	ff=_tfopen( fname,TEXT("rb") );
 	fread( p, 1, length, ff );
 	fclose(ff);
 	p[length]=0;
 	
-	strcpy( name,fname );
+	_tcscpy( name,fname );
 	return length;
 }
 
@@ -246,7 +248,7 @@ void CMemBuf::AddIndexBuffer( int sz )
 }
 
 
-char *CMemBuf::GetBuffer( void )
+LPTSTR CMemBuf::GetBuffer( void )
 {
 	return mem_buf;
 }
@@ -298,23 +300,23 @@ int CMemBuf::SearchIndexValue( int val )
 }
 
 
-int CMemBuf::SaveFile( char *fname )
+int CMemBuf::SaveFile( LPTSTR fname )
 {
 	//		バッファをファイルにセーブ
 	//		(return:ファイルサイズ(-1=error))
 	//
 	FILE *fp;
 	int flen;
-	fp=fopen(fname,"wb");
+	fp=_tfopen(fname,TEXT("wb"));
 	if (fp==NULL) return -1;
 	flen = (int)fwrite( mem_buf, 1, cur, fp );
 	fclose(fp);
-	strcpy( name,fname );
+	_tcscpy( name,fname );
 	return flen;
 }
 
 
-char *CMemBuf::GetFileName( void )
+LPTSTR CMemBuf::GetFileName( void )
 {
 	//		ファイル名を取得
 	//

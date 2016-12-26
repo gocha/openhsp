@@ -265,7 +265,7 @@
 				PrecompiledHeaderThrough="Global.h"
 				WarningLevel="3"
 				Detect64BitPortabilityProblems="true"
-				DebugInformationFormat="3"
+				DebugInformationFormat="0"
 				ForcedIncludeFiles="Global.h;zmouse.h"
 			/>
 			<Tool

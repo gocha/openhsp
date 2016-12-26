@@ -24,15 +24,15 @@
 #define IDC_UP           1056
 #define IDC_DOWN         1057
 
-static char szFindText [MAX_STRING_LEN] ;
-static char szReplText [MAX_STRING_LEN] ;
+static TCHAR szFindText [MAX_STRING_LEN] ;
+static TCHAR szReplText [MAX_STRING_LEN] ;
 static int repl_flag;
 
 extern int activeFootyID;
 extern HINSTANCE hInst;
 
 typedef struct tagFindReplaceString{
-	char *ptr;
+	LPTSTR ptr;
 	int offset;
 	int length;
 	int working;
@@ -90,8 +90,8 @@ int CALLBACK FRHookProc(HWND hDlg, UINT uiMsg, WPARAM wParam, LPARAM /*lParam*/)
 	switch(uiMsg){
 		case WM_INITDIALOG:
 		{
-			SendDlgItemMessage(hDlg, IDC_FINDMODE, CB_INSERTSTRING, 0, (LPARAM)"標準");
-			SendDlgItemMessage(hDlg, IDC_FINDMODE, CB_INSERTSTRING, 1, (LPARAM)"正規表現");
+			SendDlgItemMessage(hDlg, IDC_FINDMODE, CB_INSERTSTRING, 0, (LPARAM)TEXT("標準"));
+			SendDlgItemMessage(hDlg, IDC_FINDMODE, CB_INSERTSTRING, 1, (LPARAM)TEXT("正規表現"));
 			SendDlgItemMessage(hDlg, IDC_FINDMODE, CB_SETCURSEL, frcd.Mode, 0L);
 			SendDlgItemMessage(hDlg, IDC_ESCSEQ, BM_SETCHECK, frcd.EscSeq, 0L);
 			return TRUE;
@@ -147,7 +147,7 @@ HWND PopFindFindDlg (HWND hwnd, int down)
 		fr.wReplaceWithLen  = 0 ;
 		fr.lCustData        = 0 ;
 		fr.lpfnHook         = (LPFRHOOKPROC)FRHookProc ;
-		fr.lpTemplateName   = "FINDDLG" ;
+		fr.lpTemplateName   = TEXT("FINDDLG") ;
 
 		init_flag = true;
 	} else {
@@ -167,25 +167,25 @@ HWND PopFindFindDlg (HWND hwnd, int down)
 	nSelLen = Footy2GetSelLength(activeFootyID, LM_CRLF);
 	if( 0 < nSelLen ){
 		int i, j = 0;
-		char *szTempFindText = (char *)malloc(nSelLen + 1);
+		LPTSTR szTempFindText = (LPTSTR )malloc((nSelLen + 1)*sizeof(TCHAR));
 		if( szTempFindText ) {
 			Footy2GetSelText(activeFootyID, szTempFindText, LM_CRLF, nSelLen + 1);
 			if(frcd.EscSeq){
-				for(i = 0; szTempFindText[i] != '\0' && j + 2 < sizeof(szFindText); i++, j++){
+				for(i = 0; szTempFindText[i] != TEXT('\0') && j + 2 < sizeof(szFindText); i++, j++){
 					switch(szTempFindText[i]){
 						case 0x0D:
 							if(Footy2GetLineCode(activeFootyID) == LM_CRLF)
 								i++;
 						case 0x0A:
 							if(j + 3 < sizeof(szFindText)){
-								szFindText[j++] = '\\';
-								szFindText[j] = 'n';
+								szFindText[j++] = TEXT('\\');
+								szFindText[j] = TEXT('n');
 							}
 							break;
-						case '\t':
+						case TEXT('\t'):
 							if(j + 3 < sizeof(szFindText)){
-								szFindText[j++] = '\\';
-								szFindText[j] = 't';
+								szFindText[j++] = TEXT('\\');
+								szFindText[j] = TEXT('t');
 							}
 							break;
 						default:
@@ -194,13 +194,13 @@ HWND PopFindFindDlg (HWND hwnd, int down)
 					}
 				}
 			} else {
-				for(i = j = 0; szTempFindText[i] != '\0' && szTempFindText[i] != 0x0D &&
-					szTempFindText[i] != 0x0A && j + 1 < sizeof(szFindText); i++, j++)
+				for(i = j = 0; szTempFindText[i] != TEXT('\0') && szTempFindText[i] != 0x0D &&
+					szTempFindText[i] != 0x0A && j + 1 < sizeof(szFindText)/sizeof(TCHAR); i++, j++)
 					szFindText[j] = szTempFindText[i];
 			}
 			free(szTempFindText);
 		}
-		szFindText[j] = '\0';
+		szFindText[j] = TEXT('\0');
 	}
 	return FindText (&fr) ;
 	}
@@ -221,7 +221,7 @@ HWND PopFindReplaceDlg (HWND hwnd)
 		fr.wReplaceWithLen  = sizeof (szReplText) ;
 		fr.lCustData        = 0 ;
 		fr.lpfnHook         = (LPFRHOOKPROC)FRHookProc ;
-		fr.lpTemplateName   = "REPLACEDLG" ;
+		fr.lpTemplateName   = TEXT("REPLACEDLG") ;
 
 		init_flag = true;
 	} else {
@@ -248,7 +248,7 @@ void IgnoreCase(wchar_t *pwDest)
 
 //
 // Unicodeでのオフセットからマルチバイトでのオフセットに変換する
-void ConvertOffset(char *pDest, int *pnOffset)
+void ConvertOffset(LPTSTR pDest, int *pnOffset)
 {
 	for(int i = 0; i < *pnOffset; i++){
 		if(_ismbblead(pDest[i])){
@@ -370,7 +370,7 @@ static void FindTextAsStandard(FRSTRING * /*dest*/, FRSTRING *pattern, bool down
 	return;
 #else
 	int nDestSize, nPatternSize, nLength, nOffset;
-	char *pcDest;
+	LPTSTR pcDest;
 	wchar_t *pwDest, *pwPattern;
 	std::wstring wsDest;
 
@@ -436,7 +436,7 @@ static void FindTextAsRegExp(FRSTRING *dest, FRSTRING *pattern, bool down, bool 
 	IMatch* pMatch = NULL;
 	int nCount = 0, nIndex = 0, offset;
 	_bstr_t bsDest, bsPattern;
-	char *pDest;
+	LPTSTR pDest;
 
 	frReturn->success = false;
 	frReturn->offset = frReturn->length = 0;
@@ -447,7 +447,7 @@ static void FindTextAsRegExp(FRSTRING *dest, FRSTRING *pattern, bool down, bool 
 	ConvertOffset(dest->ptr, &offset);
 
 	pDest = dest->ptr + (down ? offset/*dest->offset*/ : 0);
-	if(!down) dest->ptr[offset/*dest->offset*/] = '\0';
+	if(!down) dest->ptr[offset/*dest->offset*/] = TEXT('\0');
 	bsDest = pDest;
 	
 	bsPattern = pattern->ptr;
@@ -485,40 +485,40 @@ static void FindTextAsRegExp(FRSTRING *dest, FRSTRING *pattern, bool down, bool 
 }
 // エスケープシーケンスをバイナリに置き換える
 // Replace escape-sequence with binary.
-static void ReplaceEscSeq(char *nstr)
+static void ReplaceEscSeq(LPTSTR nstr)
 {
-	char *sstr = nstr, *ostr = nstr;
+	TCHAR *sstr = nstr, *ostr = nstr;
 	bool esqsw = false;
 	int linecode = Footy2GetLineCode(activeFootyID);
 
 	do{
 		if(esqsw){
 			switch(*sstr){
-				case '\\':
-					*nstr++ = '\\';
+				case TEXT('\\'):
+					*nstr++ = TEXT('\\');
 					break;
-				case 'n': case 'N':
+				case TEXT('n'): case TEXT('N'):
 					if(linecode == LM_CRLF || linecode == LM_CR)
-						*nstr++ = '\r';
+						*nstr++ = TEXT('\r');
 					if(linecode == LM_CRLF || linecode == LM_LF)
-						*nstr++ = '\n';
+						*nstr++ = TEXT('\n');
 					break;
-				case 't': case 'T':
-					*nstr++ = '\t';
+				case TEXT('t'): case TEXT('T'):
+					*nstr++ = TEXT('\t');
 					break;
 				default:
-					*nstr++ = '\\';
+					*nstr++ = TEXT('\\');
 					*nstr++ = *sstr;
 					break;
 			}
 			esqsw = false;
 		} else {
-			if(*sstr == '\\' && (sstr == ostr || !_ismbblead(sstr[-1])))
+			if(*sstr == TEXT('\\') && (sstr == ostr || !_ismbblead(sstr[-1])))
                 esqsw = true;
 			else if(nstr != sstr) *nstr++ = *sstr;
 			else nstr++;
 		}
-	} while(*sstr++ != '\0');
+	} while(*sstr++ != TEXT('\0'));
 	return;
 }
 
@@ -530,14 +530,14 @@ BOOL PopFindFindText (HWND /*hwndEdit*/, int iSearchOffset, LPFINDREPLACE pfr)
 		// Read in the edit document
 
 	dest.length = Footy2GetTextLength(activeFootyID, LM_CRLF);
-	dest.ptr = (char *)malloc(dest.length + 1);
+	dest.ptr = (LPTSTR )malloc((dest.length + 1)*sizeof(TCHAR));
 	if(dest.ptr == NULL) return FALSE;
 	dest.offset = iSearchOffset;
 	Footy2GetText(activeFootyID, dest.ptr, LM_CRLF, dest.length);
 
 		// Search the document for the find string
 
-	pattern.ptr = (char *)malloc(lstrlen(pfr->lpstrFindWhat) + 1);
+	pattern.ptr = (LPTSTR )malloc((lstrlen(pfr->lpstrFindWhat) + 1)*sizeof(TCHAR));
 	if(pattern.ptr == NULL){
 		free(dest.ptr);
 		return FALSE;
@@ -578,10 +578,10 @@ BOOL PopFindNextText (HWND hwndEdit, int iSearchOffset, bool down)
 
 BOOL PopFindReplaceText (HWND hwndEdit, int iSearchOffset, LPFINDREPLACE pfr)
 	{
-	char *ReplaceWith;
+	LPTSTR ReplaceWith;
 
 
-	ReplaceWith = (char *)malloc(lstrlen(pfr->lpstrReplaceWith) + 1);
+	ReplaceWith = (LPTSTR )malloc((lstrlen(pfr->lpstrReplaceWith) + 1)*sizeof(TCHAR));
 	if(ReplaceWith == NULL){
 		return FALSE;
 	}
@@ -612,7 +612,7 @@ BOOL PopFindReplaceText (HWND hwndEdit, int iSearchOffset, LPFINDREPLACE pfr)
 
 BOOL PopFindValidFind (void)
 	{
-	return *szFindText != '\0' ;
+	return *szFindText != TEXT('\0') ;
 	}
 
 

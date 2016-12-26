@@ -8,13 +8,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <tchar.h>
 #include <direct.h>
 #include "poppad.h"
 #include "resource.h"
 
-static char szCDir[_MAX_PATH];
-static char szDefDir[_MAX_PATH];
-static char szFilt[128];
+static TCHAR szCDir[_MAX_PATH];
+static TCHAR szDefDir[_MAX_PATH];
+static TCHAR szFilt[128];
 static int enc_mode;			// 暗号化モード(1=normal/2=encode)
 
 typedef struct PFDIR
@@ -22,8 +23,8 @@ typedef struct PFDIR
 	//		PackFile directory list structure
 	//
 	int		flag;
-	char	fname[128];
-	char	pname[_MAX_PATH];
+	TCHAR	fname[128];
+	TCHAR	pname[_MAX_PATH];
 
 } PFDIR;
 
@@ -53,55 +54,55 @@ void pf_bye( void )
 	free(mem_pf);
 }
 
-void pf_add( HWND hDlg, char *fname, char *pname )
+void pf_add( HWND hDlg, LPTSTR fname, LPTSTR pname )
 {
 	int a,i;
-	char nam[128];
+	TCHAR nam[128];
 	if (*fname==0) return;
-	if (pname[strlen(pname)-1]!='\\') strcat(pname,"\\");
+	if (pname[_tcslen(pname)-1]!=TEXT('\\')) _tcscat(pname,TEXT("\\"));
 
 	a=0;
 	if (pid) {
 		for(i=0;i<pid;i++) {
 			pf=&mem_pf[i];
-			if (strcmp(pf->fname,fname)==0) a++;
+			if (_tcscmp(pf->fname,fname)==0) a++;
 		}
 	}
 	if (a) {
 #ifdef JPNMSG
-		MessageBox ( hDlg, "すでに登録されているファイル名です。",
-						   "packfile warning", MB_OK | MB_ICONEXCLAMATION);
+		MessageBox ( hDlg, TEXT("すでに登録されているファイル名です。"),
+						   TEXT("packfile warning"), MB_OK | MB_ICONEXCLAMATION);
 #else
-		MessageBox ( hDlg, "Already in use.",
-						   "packfile warning", MB_OK | MB_ICONEXCLAMATION);
+		MessageBox ( hDlg, TEXT("Already in use."),
+						   TEXT("packfile warning"), MB_OK | MB_ICONEXCLAMATION);
 #endif
 		return;
 	}
 	pf=&mem_pf[pid];
 	pf->flag = enc_mode;
-	strcpy(pf->fname,fname);
-	strcpy(pf->pname,pname);
+	_tcscpy(pf->fname,fname);
+	_tcscpy(pf->pname,pname);
 	pid++;
 
 	if ( enc_mode==1 ) {
-		strcpy( nam, fname );
+		_tcscpy( nam, fname );
 	}
 	else {
-		strcpy( nam,"+" );strcat( nam, fname );
+		_tcscpy( nam,TEXT("+") );_tcscat( nam, fname );
 	}
 	SendDlgItemMessage( hDlg,IDC_LIST3, LB_ADDSTRING,(WPARAM)-1,(LPARAM)nam );
 }
 
-int pf_find( char *fname )
+int pf_find( LPTSTR fname )
 {
 	int a,sel;
-	char *p;
+	LPTSTR p;
 	if (pid==0) return -1;
 	sel=-1;
-	p = fname; if ( *p=='+' ) p++;
+	p = fname; if ( *p==TEXT('+') ) p++;
 	for(a=0;a<pid;a++) {
 		pf=&mem_pf[a];
-		if (strcmp( pf->fname, p )==0) sel=a;
+		if (_tcscmp( pf->fname, p )==0) sel=a;
 	}
 	return sel;
 }
@@ -114,8 +115,8 @@ void pf_del( int id )
 	for(;;) {
 		a=i+1;
 		mem_pf[i].flag = mem_pf[a].flag;
-		strcpy( mem_pf[i].fname, mem_pf[a].fname );
-		strcpy( mem_pf[i].pname, mem_pf[a].pname );
+		_tcscpy( mem_pf[i].fname, mem_pf[a].fname );
+		_tcscpy( mem_pf[i].pname, mem_pf[a].pname );
 		i++;
 		if (i>=pid) break;
 	}
@@ -125,37 +126,37 @@ void pf_del( int id )
 
 int pf_save( void )
 {
-	char szNow[_MAX_PATH];
-	char szDir[_MAX_PATH];
-	char stt[256];
+	TCHAR szNow[_MAX_PATH];
+	TCHAR szDir[_MAX_PATH];
+	TCHAR stt[256];
 	FILE *fp;
 	int a,l;
 
-	strcpy(szNow,szDefDir);
-	if (szNow[strlen(szNow)-1]!='\\') strcat(szNow,"\\");
+	_tcscpy(szNow,szDefDir);
+	if (szNow[_tcslen(szNow)-1]!=TEXT('\\')) _tcscat(szNow,TEXT("\\"));
 
-	fp=fopen("packfile","wb");
+	fp=_tfopen(TEXT("packfile"),TEXT("wb"));
 	if (fp==NULL) return -1;
-	wsprintf( stt,";  packfile list for DPM\r\n" );
-	fputs( stt,fp );
-	wsprintf( stt,";  Current dir is [%s]\r\n",szNow );
-	fputs( stt,fp );
+	wsprintf( stt,TEXT(";  packfile list for DPM\r\n") );
+	_fputts( stt,fp );
+	wsprintf( stt,TEXT(";  Current dir is [%s]\r\n"),szNow );
+	_fputts( stt,fp );
 
 	if (pid) {
 		for(a=0;a<pid;a++) {
 			pf=&mem_pf[a];
 			if ( pf->flag ) {
-				strcpy(szDir,pf->pname);l=(int)strlen(szNow);
-				if (strncmp(szNow,szDir,l)==0) {
-					strcpy(szDir,szDir+l);
+				_tcscpy(szDir,pf->pname);l=(int)_tcslen(szNow);
+				if (_tcsncmp(szNow,szDir,l)==0) {
+					_tcscpy(szDir,szDir+l);
 				}
 				if ( pf->flag==1 ) {
-					wsprintf( stt,"%s%s\r\n", szDir, pf->fname );
+					wsprintf( stt,TEXT("%s%s\r\n"), szDir, pf->fname );
 				}
 				else {
-					wsprintf( stt,"+%s%s\r\n", szDir, pf->fname );
+					wsprintf( stt,TEXT("+%s%s\r\n"), szDir, pf->fname );
 				}
-				fputs( stt,fp );
+				_fputts( stt,fp );
 			}
 		}
 	}
@@ -165,40 +166,40 @@ int pf_save( void )
 
 int pf_load( HWND hDlg )
 {
-	char s0[256];
-	char s1[256];
-	char s2[256];
-	char a1;
+	TCHAR s0[256];
+	TCHAR s1[256];
+	TCHAR s2[256];
+	TCHAR a1;
 	FILE *fp;
 	int a,b;
 	int enc_bak;
 
 	enc_bak = enc_mode;
-	fp=fopen("packfile","rb");
+	fp=_tfopen(TEXT("packfile"),TEXT("rb"));
 	if (fp==NULL) return -1;
 	for(;;) {
-		if ( fgets(s0,256,fp)==NULL ) break;
+		if ( _fgetts(s0,256,fp)==NULL ) break;
 		a1=*s0;
-		if ((a1!=';')&&(a1!=0)) {
-			if ( a1=='+' ) {
+		if ((a1!=TEXT(';'))&&(a1!=0)) {
+			if ( a1==TEXT('+') ) {
 				enc_mode = 2;
-				strcpy( s1,s0+1 );
+				_tcscpy( s1,s0+1 );
 			}
 			else {
 				enc_mode = 1;
-				strcpy( s1,s0 );
+				_tcscpy( s1,s0 );
 			}
 			b=-1;
-			for(a=0;a<(int)strlen(s1);a++) {
+			for(a=0;a<(int)_tcslen(s1);a++) {
 				a1=s1[a];if (a1<32) s1[a]=0;
 				if (a1==0x5c) b=a;
 			}
 			if (b==-1)  {
-				strcpy( s2,szDefDir );
+				_tcscpy( s2,szDefDir );
 				pf_add( hDlg,s1,s2 );
 			}
 			else {
-				strcpy( s2,s1+b+1 );s1[b]=0;
+				_tcscpy( s2,s1+b+1 );s1[b]=0;
 				pf_add( hDlg,s2,s1 );
 			}
 		}
@@ -217,35 +218,35 @@ int pf_load( HWND hDlg )
 void set_dirlist( HWND hDlg )
 {
 	HWND h;
-	getcwd( szCDir, _MAX_PATH ) ;
+	_tgetcwd( szCDir, _MAX_PATH ) ;
 	h=GetDlgItem( hDlg,IDC_CDIR );SetWindowText( h,szCDir );
 	SendDlgItemMessage( hDlg,IDC_LIST1,LB_RESETCONTENT, 0, 0L );
 	SendDlgItemMessage( hDlg,IDC_LIST2,LB_RESETCONTENT, 0, 0L );
 	SendDlgItemMessage( hDlg,IDC_LIST1,LB_DIR,DDL_READWRITE,(LPARAM)szFilt );
 	SendDlgItemMessage( hDlg,IDC_LIST2,
-		LB_DIR,DDL_DIRECTORY|DDL_DRIVES|DDL_EXCLUSIVE,(LPARAM)"*.*" );
+		LB_DIR,DDL_DIRECTORY|DDL_DRIVES|DDL_EXCLUSIVE,(LPARAM)TEXT("*.*") );
 }
 
 BOOL CALLBACK PlistDlgProc (HWND hDlg, UINT message, WPARAM wParam, LPARAM /*lParam*/)
 {
 	HWND h;
-	char szText[128];
+	TCHAR szText[128];
 	int ctrl_id, i, j;
 
 	switch (message)
 	{
 	case WM_INITDIALOG:
 		h=GetDlgItem( hDlg,IDC_EDIT1 );
-		strcpy( szFilt,"*.*" );
+		_tcscpy( szFilt,TEXT("*.*") );
 		SetWindowText( h,szFilt );
-		getcwd( szDefDir, 128 ) ;
+		_tgetcwd( szDefDir, 128 ) ;
 		set_dirlist( hDlg );
 		pf_ini();
 		pf_load( hDlg );
 		return TRUE ;
 
 	case WM_CLOSE:
-		chdir( szDefDir );
+		_tchdir( szDefDir );
 		pf_bye();
 		EndDialog (hDlg, 0);
 		return TRUE;
@@ -256,11 +257,11 @@ BOOL CALLBACK PlistDlgProc (HWND hDlg, UINT message, WPARAM wParam, LPARAM /*lPa
 			i = (int)SendDlgItemMessage( hDlg,ctrl_id, LB_GETCURSEL,0,0L );
 			SendDlgItemMessage( hDlg,ctrl_id, LB_GETTEXT,i,(LPARAM)szText );
 			if ( ctrl_id==IDC_LIST2 ) {
-				szText[strlen(szText)-1]=0;
-				if (szText[1]=='-') {
-					szText[3]=':';chdir(szText+2);
+				szText[_tcslen(szText)-1]=0;
+				if (szText[1]==TEXT('-')) {
+					szText[3]=TEXT(':');_tchdir(szText+2);
 				}
-				else chdir(szText + 1);
+				else _tchdir(szText + 1);
 				set_dirlist( hDlg );
 			}
 			if ( ctrl_id==IDC_LIST1 ) {
@@ -319,14 +320,14 @@ BOOL CALLBACK PlistDlgProc (HWND hDlg, UINT message, WPARAM wParam, LPARAM /*lPa
 			break;
 
 		case IDOK:
-			chdir( szDefDir );
+			_tchdir( szDefDir );
 			pf_save();
 			pf_bye();
 			EndDialog (hDlg, 0);
 			return TRUE;
 
 		case IDCANCEL:
-			chdir( szDefDir );
+			_tchdir( szDefDir );
 			pf_bye();
 			EndDialog (hDlg, 0);
 			return TRUE;

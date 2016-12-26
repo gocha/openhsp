@@ -5,6 +5,7 @@
 #include <commctrl.h>
 #include <stdlib.h>
 #include <string.h>
+#include <tchar.h>
 #include "tabmanager.h"
 #include "footy2.h"
 #include "classify.h"
@@ -16,7 +17,7 @@
 // poppad.cpp
 LRESULT CALLBACK MyEditProc( HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam );
 void poppad_setedit( int );
-void DoCaption ( char *szTitleName, int TabID );
+void DoCaption ( LPTSTR szTitleName, int TabID );
 
 void __stdcall OnFooty2TextModified(int id, void *pParam, int nStatus);
 void __stdcall OnFootyContextMenu(void *pParam, int id);
@@ -36,10 +37,10 @@ extern int      activeID;
 extern int      activeFootyID;
 extern WNDPROC	Org_EditProc;
 extern BOOL     bNeedSave ;
-extern char     szDirName[_MAX_PATH] ;
-extern char     szFileName[_MAX_PATH] ;
-extern char     szTitleName[_MAX_FNAME + _MAX_EXT] ;
-extern char     szStartDir[_MAX_PATH];
+extern TCHAR     szDirName[_MAX_PATH] ;
+extern TCHAR     szFileName[_MAX_PATH] ;
+extern TCHAR     szTitleName[_MAX_FNAME + _MAX_EXT] ;
+extern TCHAR     szStartDir[_MAX_PATH];
 static HMENU    hMenu = NULL;
 
 // タブを作成
@@ -53,7 +54,7 @@ static HMENU    hMenu = NULL;
 //
 // 戻り値
 // ありません(Nothing)
-void CreateTab(int nTabNumber, const char *szNewTitleName, const char *szNewFileName, const char *szNewDirName)
+void CreateTab(int nTabNumber, LPCTSTR szNewTitleName, LPCTSTR szNewFileName, LPCTSTR szNewDirName)
 {
 	int FootyID;
 	int j/*, ret*/;
@@ -61,7 +62,7 @@ void CreateTab(int nTabNumber, const char *szNewTitleName, const char *szNewFile
 	TABINFO *lpTabInfo, *lpTopTabInfo;
 	TCITEM tc_item;
 	RECT rect;
-	char szCaption[_MAX_PATH+128];
+	TCHAR szCaption[_MAX_PATH+128];
 	MENUITEMINFO mii;
 	LONG dx, dy;
 
@@ -117,8 +118,8 @@ void CreateTab(int nTabNumber, const char *szNewTitleName, const char *szNewFile
 
 	// タブの名前を登録
 	// Register tab name
-	if(szNewTitleName[0] == '\0') strcpy(szCaption, TABUNTITLED);
-	else strcpy(szCaption, szNewTitleName);
+	if(szNewTitleName[0] == TEXT('\0')) _tcscpy(szCaption, TABUNTITLED);
+	else _tcscpy(szCaption, szNewTitleName);
 
 	// 新しいタブを挿入
 	// Insert a new tab
@@ -142,7 +143,7 @@ void CreateTab(int nTabNumber, const char *szNewTitleName, const char *szNewFile
 	mii.fMask      = MIIM_ID | MIIM_TYPE;
 	mii.fType      = MFT_RADIOCHECK | MFT_STRING;
 	mii.wID        = IDM_ACTIVATETAB + nTabNumber;
-	mii.dwTypeData = (LPSTR)(szNewTitleName[0] == '\0' ? TABUNTITLED : szNewTitleName);
+	mii.dwTypeData = (LPTSTR)(szNewTitleName[0] == TEXT('\0') ? TABUNTITLED : szNewTitleName);
 	InsertMenuItem(hMenu, POS_TABBASE + nTabNumber, TRUE, &mii);
 
 	mii.fMask = MIIM_ID;
@@ -174,7 +175,7 @@ void DeleteTab(int nTabNumber)
 	lpTabInfo = GetTabInfo(nTabNumber);
 //	if(lpTabInfo == NULL || (n == 1 && lpTabInfo->FileName[0] == '\0' && FootyGetMetrics(0, F_GM_UNDOREM) <= 0
 //		&& FootyGetMetrics(0, F_GM_REDOREM) <= 0))
-	if(lpTabInfo == NULL || (n == 1 && lpTabInfo->FileName[0] == '\0' && Footy2IsEdited(activeFootyID)))	// 2008-02-17 Shark++ 代替機能未実装
+	if(lpTabInfo == NULL || (n == 1 && lpTabInfo->FileName[0] == TEXT('\0') && Footy2IsEdited(activeFootyID)))	// 2008-02-17 Shark++ 代替機能未実装
 		return;
 
 	nFootyID = lpTabInfo->FootyID;
@@ -193,7 +194,7 @@ void DeleteTab(int nTabNumber)
 		if(GetTabInfo(activeID) != NULL)
 			ActivateTab(-1, activeID);
 		else activeFootyID = -1;
-	} else CreateTab(0, "", "", "");
+	} else CreateTab(0, TEXT(""), TEXT(""), TEXT(""));
 
 	mii.cbSize = sizeof(MENUITEMINFO);
 	mii.fMask  = MIIM_ID;
@@ -242,10 +243,10 @@ TABINFO *GetTabInfo(int nTabNumber)
 // 備考(Remarks)
 // szTitleName, szFileName, szDirNameにNULLを指定すると、そのパラメータは無視されます。
 // If szTitleName, szFileName, szDirName is set NULL, the parameter is ignored.
-void SetTabInfo(int nTabNumber, const char *szTitleName, const char *szFileName, const char *szDirName, BOOL bNeedSave)
+void SetTabInfo(int nTabNumber, LPCTSTR szTitleName, LPCTSTR szFileName, LPCTSTR szDirName, BOOL bNeedSave)
 {
 	MENUITEMINFO mii;
-	char *szMenuText;
+	LPTSTR szMenuText;
 	TABINFO *lpTabInfo = GetTabInfo(nTabNumber);
 	if(lpTabInfo){
 		if(szTitleName != NULL) lstrcpy(lpTabInfo->TitleName, szTitleName);
@@ -253,9 +254,9 @@ void SetTabInfo(int nTabNumber, const char *szTitleName, const char *szFileName,
 		if(szDirName   != NULL) lstrcpy(lpTabInfo->DirName,   szDirName);
 		if(bNeedSave >= 0) lpTabInfo->NeedSave = bNeedSave;
 
-		szMenuText = (char *)malloc(max(lstrlen(lpTabInfo->TitleName), lstrlen(TABUNTITLED)) + 3);
-		lstrcpy(szMenuText, lpTabInfo->TitleName[0] == '\0' ? TABUNTITLED : lpTabInfo->TitleName);
-		if(lpTabInfo->NeedSave) lstrcat(szMenuText, " *");
+		szMenuText = (LPTSTR )malloc((max(lstrlen(lpTabInfo->TitleName), lstrlen(TABUNTITLED)) + 3)*sizeof(TCHAR));
+		lstrcpy(szMenuText, lpTabInfo->TitleName[0] == TEXT('\0') ? TABUNTITLED : lpTabInfo->TitleName);
+		if(lpTabInfo->NeedSave) lstrcat(szMenuText, TEXT(" *"));
 		mii.cbSize = sizeof(MENUITEMINFO);
 		mii.fMask  = MIIM_TYPE;
 		mii.fType  = MFT_STRING | MFT_RADIOCHECK;
@@ -280,7 +281,7 @@ void SetTabInfo(int nTabNumber, const char *szTitleName, const char *szFileName,
 // 戻り値(Result)
 // 見つかった場合は対象のタブ番号、見つからなければ-1を返します。
 // If finder could find a target, return number of target, or else return -1
-int SearchTab(const char *szTitleName, const char *szFileName, const char *szDirName, ULONGLONG ullFileIndex)
+int SearchTab(LPCTSTR szTitleName, LPCTSTR szFileName, LPCTSTR szDirName, ULONGLONG ullFileIndex)
 {
 	TABINFO *lpTabInfo;
 	int num = TabCtrl_GetItemCount(hwndTab);
@@ -288,9 +289,9 @@ int SearchTab(const char *szTitleName, const char *szFileName, const char *szDir
 	for(int i = 0; i < num; i++){
 		lpTabInfo = GetTabInfo(i);
 
-		if((szTitleName  && !strcmp(szTitleName, lpTabInfo->TitleName))
-		|| (szFileName   && !strcmp(szFileName,  lpTabInfo->FileName))
-		|| (szDirName    && !strcmp(szDirName,   lpTabInfo->DirName))
+		if((szTitleName  && !_tcscmp(szTitleName, lpTabInfo->TitleName))
+		|| (szFileName   && !_tcscmp(szFileName,  lpTabInfo->FileName))
+		|| (szDirName    && !_tcscmp(szDirName,   lpTabInfo->DirName))
 		|| (ullFileIndex && ullFileIndex == lpTabInfo->FileIndex))
 			return i;
 	}
@@ -320,9 +321,9 @@ void ActivateTab(int nTabNumber1, int nTabNumber2)
 		activeFootyID = lpTabInfo2->FootyID;
 
 		bNeedSave = lpTabInfo2->NeedSave;
-		strcpy(szTitleName, lpTabInfo2->TitleName);
-		strcpy(szFileName, lpTabInfo2->FileName);
-		strcpy(szDirName, lpTabInfo2->DirName);
+		_tcscpy(szTitleName, lpTabInfo2->TitleName);
+		_tcscpy(szFileName, lpTabInfo2->FileName);
+		_tcscpy(szDirName, lpTabInfo2->DirName);
 		DoCaption (szTitleName, activeID);
 
 		SetCurrentDirectory(lpTabInfo2->DirName);

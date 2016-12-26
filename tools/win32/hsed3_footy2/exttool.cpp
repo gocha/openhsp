@@ -10,7 +10,7 @@
 #include "exttool.h"
 #include "support.h"
 
-extern char szFileName[_MAX_PATH];
+extern TCHAR szFileName[_MAX_PATH];
 
 static int nSize;
 static EXTTOOLINFO *lpExtToolInfo;
@@ -90,7 +90,7 @@ void SetMenuExtTool()
 		mii.fType      = MFT_STRING;
 		mii.fState     = MFS_GRAYED;
 		mii.wID        = 0;
-		mii.dwTypeData = "外部ツールはありません";
+		mii.dwTypeData = TEXT("外部ツールはありません");
 		InsertMenuItem(hMainMenu, POS_TOOLMAINBASE, TRUE, &mii);
 	}
 	DrawMenuBar(hwbak);
@@ -99,8 +99,8 @@ void SetMenuExtTool()
 bool AddExtTool(unsigned int nToolID, EXTTOOLINFO *lpAddExtToolInfo)
 {
 	if(nToolID >= (unsigned int)nSize){
-		msgboxf(NULL, "追加するツールIDが範囲を超えました。\n"
-			"このエラーはバグの可能性があります。", "error", MB_OK | MB_ICONERROR);
+		msgboxf(NULL, TEXT("追加するツールIDが範囲を超えました。\n")
+			TEXT("このエラーはバグの可能性があります。"), TEXT("error"), MB_OK | MB_ICONERROR);
 		return false;
 	}
 	lpExtToolInfo[nToolID] = *lpAddExtToolInfo;
@@ -111,42 +111,42 @@ bool AddExtTool(unsigned int nToolID, EXTTOOLINFO *lpAddExtToolInfo)
 bool ExecExtTool(HWND hWnd, unsigned int nToolID, bool bStartup)
 {
 	int i, j, nLength;
-	char szCmdLine[SIZE_OF_CMDLINE], szCurDir[_MAX_PATH + 1], szWorkDir[_MAX_PATH + 1];
+	TCHAR szCmdLine[SIZE_OF_CMDLINE], szCurDir[_MAX_PATH + 1], szWorkDir[_MAX_PATH + 1];
 	bool bEscSeq = false;
 	HINSTANCE hRet;
-	const char *lpErrMsg[] = {
-		"メモリまたはリソースが不足しています。", NULL, "指定されたファイルが見つかりませんでした。",
-		"指定されたパスが見つかりませんでした。", NULL,
-		"オペレーティングシステムが、指定されたファイルへのアクセスを拒否しました。",
-		NULL, NULL, "操作を完了するのに十分なメモリがありません。", NULL, NULL,
-		".exe ファイルが無効です。Win32 の .exe ではないか、.exe イメージ内にエラーがあります。",
+	LPCTSTR lpErrMsg[] = {
+		TEXT("メモリまたはリソースが不足しています。"), NULL, TEXT("指定されたファイルが見つかりませんでした。"),
+		TEXT("指定されたパスが見つかりませんでした。"), NULL,
+		TEXT("オペレーティングシステムが、指定されたファイルへのアクセスを拒否しました。"),
+		NULL, NULL, TEXT("操作を完了するのに十分なメモリがありません。"), NULL, NULL,
+		TEXT(".exe ファイルが無効です。Win32 の .exe ではないか、.exe イメージ内にエラーがあります。"),
 		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 
-		"共有違反が発生しました。 ", "ファイル名の関連付けが不完全または無効です。", NULL,
-		"要求がタイムアウトしたので、DDE トランザクションを完了できませんでした。",
-		"DDE トランザクションが失敗しました。",
-		"ほかの DDE トランザクションが現在処理中なので、DDE トランザクションを完了できませんでした。",
-		"指定されたファイル拡張子に関連付けられたアプリケーションがありません。\n"
-		"印刷可能ではないファイルを印刷しようとした場合も、このエラーが返ります。",
-		"指定されたダイナミックリンクライブラリ（DLL）が見つかりませんでした。",
+		TEXT("共有違反が発生しました。 "), TEXT("ファイル名の関連付けが不完全または無効です。"), NULL,
+		TEXT("要求がタイムアウトしたので、DDE トランザクションを完了できませんでした。"),
+		TEXT("DDE トランザクションが失敗しました。"),
+		TEXT("ほかの DDE トランザクションが現在処理中なので、DDE トランザクションを完了できませんでした。"),
+		TEXT("指定されたファイル拡張子に関連付けられたアプリケーションがありません。\n")
+		TEXT("印刷可能ではないファイルを印刷しようとした場合も、このエラーが返ります。"),
+		TEXT("指定されたダイナミックリンクライブラリ（DLL）が見つかりませんでした。"),
 	};
 
 	if(nToolID >= (unsigned int)nSize || lpExtToolInfo[nToolID].Used == false){
-		msgboxf(hWnd, "ツールIDが範囲を超えているため、\"%s\"を開くことができませんでした。\n"
-			"このエラーはバグの可能性が大きいです。", "error", MB_OK | MB_ICONERROR);
+		msgboxf(hWnd, TEXT("ツールIDが範囲を超えているため、\"%s\"を開くことができませんでした。\n")
+			TEXT("このエラーはバグの可能性が大きいです。"), TEXT("error"), MB_OK | MB_ICONERROR);
 		return false;
 	}
 
 	nLength = lstrlen(szFileName);
-	for(i = 0, j = 0; lpExtToolInfo[nToolID].CmdLine[i] != '\0' && j + 1 < SIZE_OF_CMDLINE; i++){
+	for(i = 0, j = 0; lpExtToolInfo[nToolID].CmdLine[i] != TEXT('\0') && j + 1 < SIZE_OF_CMDLINE; i++){
 		switch(lpExtToolInfo[nToolID].CmdLine[i]){
-			case '%':
+			case TEXT('%'):
 				if(bEscSeq)
-					szCmdLine[j++] = '%';
+					szCmdLine[j++] = TEXT('%');
 				else
 					bEscSeq = true;
 				break;
 
-			case 'f': case 'F':
+			case TEXT('f'): case TEXT('F'):
 				if(bEscSeq){
 					strlcpy(szCmdLine + j, szFileName, SIZE_OF_CMDLINE - j);
 					j += nLength;
@@ -154,7 +154,7 @@ bool ExecExtTool(HWND hWnd, unsigned int nToolID, bool bStartup)
 					break;
 				}
 
-			case 'd': case 'D':
+			case TEXT('d'): case TEXT('D'):
 				if(bEscSeq){
 					GetCurrentDirectory(sizeof(szCurDir), szCurDir);
 					strlcpy(szCmdLine + j, szCurDir, SIZE_OF_CMDLINE - j);
@@ -165,7 +165,7 @@ bool ExecExtTool(HWND hWnd, unsigned int nToolID, bool bStartup)
 
 			default:
 				if(bEscSeq){
-					szCmdLine[j++] = '%';
+					szCmdLine[j++] = TEXT('%');
 					bEscSeq = false;
 				}
 				szCmdLine[j++] = lpExtToolInfo[nToolID].CmdLine[i];
@@ -173,25 +173,25 @@ bool ExecExtTool(HWND hWnd, unsigned int nToolID, bool bStartup)
 		}
 	}
 	if(j + 1 >= SIZE_OF_CMDLINE){
-		msgboxf(hWnd, "コマンドラインが長すぎるため、\"%s\"を開くことができませんでした。", 
-			"error", MB_OK | MB_ICONERROR, lpExtToolInfo->ToolName);
+		msgboxf(hWnd, TEXT("コマンドラインが長すぎるため、\"%s\"を開くことができませんでした。"), 
+			TEXT("error"), MB_OK | MB_ICONERROR, lpExtToolInfo->ToolName);
 		return false;
 	}
-	szCmdLine[j] = '\0';
+	szCmdLine[j] = TEXT('\0');
 
 	bEscSeq = false;
-	for(i = 0, j = 0; lpExtToolInfo[nToolID].WorkDir[i] != '\0' && j + 1 < MAX_PATH + 1; i++){
+	for(i = 0, j = 0; lpExtToolInfo[nToolID].WorkDir[i] != TEXT('\0') && j + 1 < MAX_PATH + 1; i++){
 		switch(lpExtToolInfo[nToolID].WorkDir[i]){
-			case '%':
+			case TEXT('%'):
 				if(bEscSeq)
-					szWorkDir[j++] = '%';
+					szWorkDir[j++] = TEXT('%');
 				else
 					bEscSeq = true;
 				break;
 
-			case 'f': case 'F':
+			case TEXT('f'): case TEXT('F'):
 				if(bEscSeq){
-					TCHAR *pLastDirSep = _tcsrchr(szFileName, '\\');
+					TCHAR *pLastDirSep = _tcsrchr(szFileName, TEXT('\\'));
 					nLength = pLastDirSep ? (int)(pLastDirSep - szFileName) : lstrlen(szFileName);
 					strlcpy(szWorkDir + j, szFileName, min(MAX_PATH + 1 - j, nLength + 1));
 					j += nLength;
@@ -199,7 +199,7 @@ bool ExecExtTool(HWND hWnd, unsigned int nToolID, bool bStartup)
 					break;
 				}
 
-			case 'd': case 'D':
+			case TEXT('d'): case TEXT('D'):
 				if(bEscSeq){
 					GetCurrentDirectory(sizeof(szCurDir), szCurDir);
 					strlcpy(szWorkDir + j, szCurDir, MAX_PATH + 1 - j);
@@ -210,14 +210,14 @@ bool ExecExtTool(HWND hWnd, unsigned int nToolID, bool bStartup)
 
 			default:
 				if(bEscSeq){
-					szWorkDir[j++] = '%';
+					szWorkDir[j++] = TEXT('%');
 					bEscSeq = false;
 				}
 				szWorkDir[j++] = lpExtToolInfo[nToolID].WorkDir[i];
 				break;
 		}
 	}
-	szWorkDir[j] = '\0';
+	szWorkDir[j] = TEXT('\0');
 
 	if(lpExtToolInfo[nToolID].ExecWithOverwrite && !bStartup)
 		SendMessage(hWnd, WM_COMMAND, MAKEWPARAM(IDM_SAVE, 0), NULL);
@@ -225,8 +225,8 @@ bool ExecExtTool(HWND hWnd, unsigned int nToolID, bool bStartup)
 	hRet = ShellExecute(hWnd, NULL, lpExtToolInfo[nToolID].FileName, szCmdLine, szWorkDir,
 		SW_SHOWNORMAL);
 	if((int)hRet <= 32){
-		msgboxf(hWnd, "外部ツールの起動に失敗しました。\n失敗原因は下記の通りです。\n\n%s",
-			"error", MB_OK | MB_ICONERROR, lpErrMsg[(int)hRet] != NULL ? lpErrMsg[(int)hRet] : "未知のエラーです。");
+		msgboxf(hWnd, TEXT("外部ツールの起動に失敗しました。\n失敗原因は下記の通りです。\n\n%s"),
+			TEXT("error"), MB_OK | MB_ICONERROR, lpErrMsg[(int)hRet] != NULL ? lpErrMsg[(int)hRet] : TEXT("未知のエラーです。"));
 		return false;
 	}
 

@@ -1670,7 +1670,7 @@ int poppad_reload( int nTabID )
 	if(lstrlen(lpTabInfo->FileName) > 0){
 		len = lstrlen(lpTabInfo->FileName);
 		a1 = lpTabInfo->FileName[len-1];
-		if(a1 == '"') lpTabInfo->FileName[len-1]=0;
+		if(a1 == TEXT('"')) lpTabInfo->FileName[len-1]=0;
 
 		if(GetFileTitle2(lpTabInfo->FileName, lpTabInfo->TitleName)){
 			lstrcpy(lpTabInfo->TitleName, lpTabInfo->FileName );

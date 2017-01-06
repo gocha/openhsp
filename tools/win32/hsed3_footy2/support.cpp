@@ -257,7 +257,7 @@ void GetDirName(LPTSTR dirName, LPCTSTR path)
 		i++;
 #endif
 	}
-	memcpy(dirName, path, pos + 1);
+	memcpy(dirName, path, (pos + 1)*sizeof(TCHAR));
 	dirName[pos + 1] = TEXT('\0');
 }
 

@@ -88,6 +88,8 @@ CMemBuf *AhtMenuBuf;
 extern int ClickID;
 static int cyToolBar ;
 
+extern int autobackup;
+int AutoBackupTimer;
 
 // Toolbar functions.
 HWND InitToolBar (HWND hwndParent, HINSTANCE hInst );
@@ -137,7 +139,7 @@ int getUnicodeOffset(LPTSTR text, int offset)
 		}
 		res--;
 	}
-	return ((int)(p - (unsigned char *)text));
+	return ((int)(p-(unsigned char *)text));
 }
 
 int getUnicodeOffset2( LPTSTR text, int offset )
@@ -149,7 +151,7 @@ int getUnicodeOffset2( LPTSTR text, int offset )
 	unsigned char *p2;
 	unsigned char a1;
 
-	p = (unsigned char * )text;
+	p = (unsigned char *)text;
 	p2 = p + offset;
 	res = 0;
 	for(;;) {
@@ -333,6 +335,16 @@ int BuildEzInputMenu( HMENU menu, LPTSTR fname, LPTSTR dirname )
 
 	sh=FindFirstFile( wname, &fd );
 	if (sh==INVALID_HANDLE_VALUE) {
+		int size = _tcslen(dirname) + 64;
+		LPTSTR tmp = (LPTSTR)calloc(size + 1, sizeof(char));
+		_tcscat_s(tmp, size, dirname);
+#ifdef JPNMSG
+		_tcscat_s(tmp, size, TEXT(" は使用できません"));
+#else
+		_tcscat_s(tmp, size, TEXT(" is invalid."));
+#endif
+		AppendMenu( menu, MF_GRAYED | MF_DISABLED, 0xFFFF, tmp );
+		free(tmp);
         FindClose( sh );
 		return 0;
 	}
@@ -406,11 +418,14 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	 HANDLE      hMutex ;
 	 TCHAR		 tmp[_MAX_PATH];
 
+// デバッグ時無効化
+#ifndef _DEBUG
 	 hMutex = CreateMutex(NULL, TRUE, MUTEX_NAME);
 	 if(GetLastError() == ERROR_ALREADY_EXISTS){
 		 EnumWindows((WNDENUMPROC)EnumWindowsProc, NULL);
 		 return 0;
 	 }
+#endif
 
      InitCommonControls () ;
 	 OleInitialize(NULL);
@@ -420,7 +435,15 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 //	 FootySetCursor(IDC_ONLINE, IDC_ONURL);	// 2008-02-17 Shark++ 代替機能不明
 	 //FootySetMetrics(0, F_SM_CREATESHOW, F_CS_HIDE, false);
 
-     hInst = hInstance ;
+	// 日本だったら日本語、それ以外はすべて英語
+	//UINT localeId = GetUserDefaultLCID();
+	//if(0x411 != localeId){
+	//	localeId = 0x409; // 日本語以外は英語UIとして表示する
+	//}
+	//SetThreadUILanguage(localeId);
+	//SetThreadLocale(localeId);
+
+	 hInst = hInstance ;
 
 	 wc.cbSize        = sizeof (wc) ;
      wc.lpszClassName = szAppName ;
@@ -523,7 +546,11 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 	hSubMenu = GetSubMenu(hMenu, 0);
 
 	wsprintf( tmp, TEXT("%s\\ezinput"), szExeDir );
+#ifdef JPNMSG
 	BuildEzInputMenu( hSubMenu, tmp, TEXT("かんたん入力") );
+#else
+	BuildEzInputMenu(hSubMenu, tmp, TEXT("EasyInput"));
+#endif
 
 	hMenu2 = LoadMenu(hInstance, TEXT("CONTEXTMENU2"));
 	hSubMenu2 = GetSubMenu(hMenu2, 0);
@@ -573,6 +600,37 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
 			TEXT("You can't use some extending tools.")
 #endif
 			, TEXT("start up error"), MB_OK | MB_ICONEXCLAMATION);
+	
+	// バックアップファイルがある場合は読む
+	TCHAR _backuppath[MAX_PATH*2];
+	GetBackupPath(_backuppath, MAX_PATH*2);
+	if (ExistBackupFile(_backuppath) != -1){
+#ifdef JPNMSG
+		int res = MessageBox(hwnd, TEXT("前回正しく終了されませんでした。バックアップファイルから復旧しますか？"), TEXT(""), MB_ICONQUESTION | MB_YESNO);
+#else
+		int res = MessageBox(hwnd, TEXT("Invalid exit detected. Will you resume from backup?"), TEXT(""), MB_ICONQUESTION | MB_YESNO);
+#endif
+		if (res == IDYES){
+			ReadBackup();
+		}else{
+#ifdef JPNMSG
+			res = MessageBox(hwnd, TEXT("復元しない場合はバックアップファイルが消えますがよろしいですか？"), TEXT(""), MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2);
+#else
+			res = MessageBox(hwnd, TEXT("Are you sure to delete backup files?"), TEXT(""), MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2);
+#endif
+			if (res == IDNO){
+				ReadBackup();
+			}
+		}
+	}
+	
+	// タイマーセット
+	if (autobackup > 0){
+		AutoBackupTimer = SetTimer(hWndMain, TIMERID_AUTOBACKUP, autobackup*1000, 0);
+	}else{
+		
+	}
+	
 
 	//	main loop
 
@@ -589,11 +647,19 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
            }
        }
 	}
-
+	KillTimer(hwnd, AutoBackupTimer);
 	dll_bye();							// DLLを開放
 #ifdef FOOTYSTATIC
 	Footy2End();
 #endif	/*FOOTYSTATIC*/
+	
+	// バックアップファイル削除
+	TCHAR backuppath[MAX_PATH*2];
+	GetBackupPath(backuppath, MAX_PATH*2);
+	BackupDelete(backuppath);
+	
+	
+
 	delete AhtMenuBuf;
 	return (int)msg.wParam ;
 }
@@ -637,9 +703,29 @@ void UpdateViewOption( int toolbar_flag, int stbar_flag )
 	PostMessage (hWndMain, WM_SIZE, 0, MAKELPARAM (r.right, r.bottom));
 }
 //-------------------------------------------------------------------
-LRESULT WINAPI
+LRESULT CALLBACK
 WndProc (HWND hwnd, UINT mMsg, WPARAM wParam, LPARAM lParam) 
      {
+	 // 自動バックアップが有効な場合
+	 if (autobackup > 0){
+		 if (mMsg == WM_TIMER){
+			if (wParam == TIMERID_AUTOBACKUP)
+				AutoBackUp();
+		 }else if (mMsg == WM_QUERYENDSESSION){
+			 return TRUE;
+		 }else if (mMsg == WM_ENDSESSION){
+			// HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\RunOnce
+			HKEY hKey;
+			DWORD dwDisposition;
+			LONG result;
+			result = RegCreateKeyExA( HKEY_CURRENT_USER, "Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce", 0, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &hKey, &dwDisposition);
+			char data[MAX_PATH*2] = {0};
+			GetModuleFileNameA(NULL, data, sizeof(data));
+			result = RegSetValueExA(hKey, "!HSED3", 0, REG_SZ, (CONST BYTE*)(LPCTSTR)data, strlen(data));
+			RegCloseKey(hKey);
+			ExitProcess( 0 );
+		 }
+	 }
      switch (mMsg)
           {
           case WM_CREATE :
@@ -890,7 +976,7 @@ WndProc (HWND hwnd, UINT mMsg, WPARAM wParam, LPARAM lParam)
 //	}
 //}
 
-LRESULT WINAPI 
+LRESULT CALLBACK 
 ClientWndProc (HWND hwnd, UINT mMsg, WPARAM wParam, LPARAM lParam)
      {
 	RECT rect;

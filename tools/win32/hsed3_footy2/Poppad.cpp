@@ -37,7 +37,11 @@
 #include "exttool.h"
 #include "hscw.h"
 
+#include "PackIconResource.h"
 
+// PathIsDirectoryで使用
+#include "shlwapi.h"
+#pragma comment(lib, "shlwapi.lib")
 /*
 		XP support routines
 */
@@ -158,7 +162,11 @@ static int selfolder( LPTSTR pname )
 	memset( FolderName, 0, _MAX_PATH );
 	BrowsingInfo.hwndOwner      = NULL;
 	BrowsingInfo.pszDisplayName = FolderName;
+#ifdef JPNMSG
 	BrowsingInfo.lpszTitle      = TEXT("フォルダを選択してください");
+#else
+	BrowsingInfo.lpszTitle	    = TEXT("Select Folder");
+#endif
 	BrowsingInfo.ulFlags        = BIF_RETURNONLYFSDIRS;
 	ItemID = SHBrowseForFolder( &BrowsingInfo );
 	if (ItemID==NULL) return -1;
@@ -243,6 +251,7 @@ void LoadFromCommandLine(LPTSTR );
 void PopFileInitialize (HWND) ;
 BOOL PopFileOpenDlg    (HWND, LPTSTR, LPTSTR) ;
 BOOL PopFileOpenDlg2   (HWND, LPTSTR, LPTSTR) ;
+BOOL PopFileOpenDlgImg (HWND, LPTSTR, LPTSTR) ;
 BOOL PopFileSaveDlg    (HWND, LPTSTR, LPTSTR) ;
 BOOL PopFileRead       (int, LPTSTR) ;
 BOOL PopFileWrite      (int,  LPTSTR) ;
@@ -251,8 +260,9 @@ BOOL PopFileWrite      (int,  LPTSTR) ;
 
 HWND PopFindFindDlg     (HWND, int) ;
 HWND PopFindReplaceDlg  (HWND) ;
-BOOL PopFindFindText    (HWND, int, LPFINDREPLACE) ;
+BOOL PopFindFindText    (HWND, int, LPFINDREPLACE, bool) ;
 BOOL PopFindReplaceText (HWND, int, LPFINDREPLACE) ;
+BOOL PopFindReplaceAllText(HWND, int, LPFINDREPLACE);
 void PopFindDlgTerm     (DWORD);
 BOOL PopFindNextText    (HWND, int, bool) ;
 BOOL PopFindValidFind   (void) ;
@@ -355,6 +365,26 @@ int linewidth;
 int linespace;
 
 BOOL bAutoIndent;
+
+int forcefont;		// フォント強制 by inovia
+BOOL bCustomColor;	// カスタムカラー by inovia
+int autobackup;		// 自動バックアップ by inovia
+BOOL BackupNoDelete;// 復旧時バックアップファイルを削除せず保存する by inovia
+BOOL NotifyBackup;	// バックアップしたことをステータスバーで通知
+extern int AutoBackupTimer;	// タイマー
+int speedDraw;		// 高速描画
+BOOL bDrawUnderline;	// 非フォーカス時にもアンダーライン描画
+BOOL UseNewReplace; // 高速な置換 by Tetr@pod
+BOOL CustomMatchCase; // カスタム色分け機能の大文字小文字の区別 by Tetr@pod
+int nowViewMode = VIEWMODE_NORMAL;// ウィンドウ分割 by Tetr@pod
+BOOL UseClickableLabel; // リンクラベルを使用する by Tetr@pod
+BOOL UseSearchFunction; // ユーザー定義命令・関数を色分けする by Tetr@pod
+
+BOOL ChangeColor_func; // #func、#cfunc、#cmd を色分けしない by Tetr@pod
+BOOL ChangeColor_define; // #define、#define ctype を色分けしない by Tetr@pod
+
+TCHAR BgImagePath[_MAX_PATH+1]; // 背景画像パス by inovia
+
 
 /*
 		Error message process
@@ -789,6 +819,7 @@ static int mkexefile2( LPTSTR fname )
 
 	_stprintf( ftmp, TEXT("%s\\%s.dpm"), szExeDir, srcfn );
 	a=hsc3_make( 0,(int)ftmp,0,0 );
+
 	if ( a ) return a;
 	return 0;
 }
@@ -1042,13 +1073,17 @@ void DoCaption ( LPTSTR szTitleName, int TabID )
 	 SetWindowText (hwbak, szCaption) ;
 
 	 if(TabID >= 0){
-		 TCHAR szTabCaption[_MAX_PATH+128] ;
+		 TCHAR szTabCaption[_MAX_PATH*5+128] ;	// 下の置き換え処理を実行した場合最悪で、５倍必要な為
 		 TCITEM tc_item;
 		 TABINFO *lpTabInfo;
 
 		 lpTabInfo = GetTabInfo(TabID);
 	     wsprintf (szTabCaption, TEXT("%s%s"),
 			 lpTabInfo->TitleName[0] ? lpTabInfo->TitleName : TABUNTITLED, lpTabInfo->NeedSave ? TEXT(" *") : TEXT("")) ;
+
+		 // &を&&に置き換える処理(これしないと&が含まれているとき、タブの文字列がアンダーバーが付く)
+		 StrReplaceALL(szTabCaption, TEXT("&"), TEXT(":amp:"));
+		 StrReplaceALL(szTabCaption, TEXT(":amp:"), TEXT("&&"));
 
 		 tc_item.mask = TCIF_TEXT;
 		 tc_item.pszText = szTabCaption;
@@ -1245,6 +1280,7 @@ BOOL CALLBACK ErrDlgProc (HWND hDlg, UINT message, WPARAM wParam, LPARAM /*lPara
 	
 	2006/09/06 コメントが存在するときとEOF付近のときのラベルが無視される不具合を修正(LonelyWolf)
 */
+
 
 static void set_labellist( HWND hList, HWND /*hwndEdit*/ )
 {
@@ -1545,8 +1581,12 @@ static void poppad_setalledit()
 
 static void poppad_setsb0( int chk, int FootyID )
 {
-	HWND hWnd = Footy2GetWnd(FootyID, 0);
-	ShowScrollBar(hWnd, SB_HORZ, chk);
+	/*
+	for(int i = 0; i > 4; i++){
+		HWND hWnd = Footy2GetWnd(FootyID, i);
+		ShowScrollBar(hWnd, SB_HORZ, chk);
+	}
+	*/
 }
 
 int poppad_setsb( int flag )
@@ -1726,6 +1766,7 @@ LRESULT CALLBACK MyEditProc( HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam )
 			 * 処理内容
 			 *  
 			 */
+
 			ret = Footy2GetSel(activeFootyID, (size_t*)&nsLine, (size_t*)&nsPos, (size_t*)&neLine, (size_t*)&nePos);
 			if(FOOTY2ERR_NOTSELECTED == ret){
 				Footy2GetCaretPosition(activeFootyID, (size_t*)&nsLine, (size_t*)&nsPos);
@@ -1749,7 +1790,7 @@ LRESULT CALLBACK MyEditProc( HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam )
 			for(i = 0; i < nLength && (szLine[i] == TEXT(' ') || szLine[i] == TEXT('\t')); i++, j++)
 				szSpaceBuf[j] = szLine[i];
 			if(szLine[i] == TEXT('\0') || i >= nsPos)
-				nsPos = 1;
+				nsPos = 0;//1
 			else if(szLine[i] == TEXT('*') && i < nsPos)
 				szSpaceBuf[j++] = TEXT('\t');
             szSpaceBuf[j] = TEXT('\0');
@@ -2003,11 +2044,11 @@ LRESULT CALLBACK EditDefProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 		if (pfr->Flags & FR_DIALOGTERM) hDlgModeless = NULL ;
 
 		if (pfr->Flags & FR_FINDNEXT)
-			if (!PopFindFindText (hwndEdit, iOffset, pfr)){
+			if (!PopFindFindText (hwndEdit, iOffset, pfr, true)){
 #ifdef JPNMSG
                 OkMessage2 ( TEXT("終わりまで検索しました"), TEXT("")) ;
 #else
-                OkMessage2 ( TEXT("Not found."), "") ;
+                OkMessage2 ( TEXT("Not found."), TEXT("")) ;
 #endif
 			}
 
@@ -2015,20 +2056,37 @@ LRESULT CALLBACK EditDefProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
             iOffset = 0;
 
         if (pfr->Flags & FR_REPLACE || pfr->Flags & FR_REPLACEALL)
-			if (!PopFindReplaceText (hwndEdit, iOffset, pfr))
+			if (pfr->Flags & FR_REPLACE || !UseNewReplace ) {
+				if (!PopFindReplaceText (hwndEdit, iOffset, pfr)) {
 #ifdef JPNMSG
 				OkMessage2 ( TEXT("終わりまで置換しました"), TEXT("")) ;
 #else
-				OkMessage2 ( TEXT("Replace finished."), "") ;
+				OkMessage2 ( TEXT("Replace finished."), TEXT("")) ;
 #endif
+				}
+			}
+			if (pfr->Flags & FR_REPLACEALL) {// elseでは代替できない
 
-		if (pfr->Flags & FR_REPLACEALL) {
-			// 2008-03-11 Shark++ 他のエディタに比べると置換がすごく遅い気がする(それでも現行版よりは早いけど)
-		//	::SendMessage(Footy2GetWnd(activeFootyID, 0), WM_SETREDRAW, 0, 0); // 2008-03-11 Shark++ 速度を稼ぐために描画を止めてみたけどあまり変わらない
-			while (PopFindReplaceText (hwndEdit, iOffset, pfr) );
-		//	::SendMessage(Footy2GetWnd(activeFootyID, 0), WM_SETREDRAW, 1, 0);
-		//	Footy2Refresh(activeFootyID);
-		}
+				// 2008-03-11 Shark++ 他のエディタに比べると置換がすごく遅い気がする(それでも現行版よりは早いけど)
+			//	::SendMessage(Footy2GetWnd(activeFootyID, 0), WM_SETREDRAW, 0, 0); // 2008-03-11 Shark++ 速度を稼ぐために描画を止めてみたけどあまり変わらない
+
+				if ( UseNewReplace ) {// 設定により処理を振り分ける
+					if (!PopFindFindText (hwndEdit, iOffset, pfr, false)) {
+#ifdef JPNMSG
+						OkMessage2 ( TEXT("終わりまで置換しました"), TEXT("")) ;
+#else
+						OkMessage2 ( TEXT("Replace finished."), TEXT("")) ;
+#endif
+					}
+
+					PopFindReplaceAllText(hwndEdit, iOffset, pfr);// by Tetr@pod
+				} else {
+					while ( PopFindReplaceText(hwndEdit, iOffset, pfr) );
+					PopFindReplaceText(hwndEdit, iOffset, pfr);
+				}
+			//	::SendMessage(Footy2GetWnd(activeFootyID, 0), WM_SETREDRAW, 1, 0);
+			//	Footy2Refresh(activeFootyID);
+			}
 	// 2008-02-17 Shark++ 後回し
 		return 0 ;
 	}
@@ -2056,7 +2114,7 @@ LRESULT CALLBACK EditDefProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
 
 
-LRESULT WINAPI EditProc (HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK EditProc (HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 {
      int a;
 	 int low;
@@ -2157,11 +2215,19 @@ LRESULT WINAPI EditProc (HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
 //					bUndo = (FootyGetMetrics(activeID, F_GM_UNDOREM) > 0);
 					bUndo = Footy2IsEdited(activeID);	// 2008-02-17 Shark++ 要動作確認
+#ifdef JPNMSG
 					if((!bNeedSave && !bUndo) || 
 						msgboxf(hwnd, TEXT("再読込を行う上で、下記のことが起こります。よろしいですか？\n\n")
 						TEXT("・「元に戻す」の情報が破棄され、再読込以前に戻れなくなります。%s"),
 						TEXT("Warning"), MB_YESNO | MB_ICONQUESTION, bNeedSave ? TEXT("\n・変更が無視されます") : TEXT("")) == IDYES)
                         	poppad_reload(activeID);
+#else
+					if((!bNeedSave && !bUndo) || 
+						msgboxf(hwnd, TEXT("Are you sure you want to reload the text? It will lead to these things.\n\n")
+						TEXT("\tYou lose the 'Undo' history and cannot take back any changes before the reloading.%s"),
+						TEXT("Warning"), MB_YESNO | MB_ICONQUESTION, bNeedSave ? TEXT("\nlose all unsaved changes") : TEXT("")) == IDYES)
+                        	poppad_reload(activeID);
+#endif
 					return 0;
 				}
 
@@ -2175,11 +2241,19 @@ LRESULT WINAPI EditProc (HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
 //					bUndo = (FootyGetMetrics(ClickID, F_GM_UNDOREM) > 0);
 					bUndo = Footy2IsEdited(ClickID);	// 2008-02-17 Shark++ 要動作確認
+#ifdef JPNMSG
 					if((!lpTabInfo->NeedSave && !bUndo) || 
 						msgboxf(hwnd, TEXT("再読込を行う上で、下記のことが起こります。よろしいですか？\n\n")
 						TEXT("・「元に戻す」の情報が破棄され、再読込以前に戻れなくなります。%s"),
 						TEXT("Warning"), MB_YESNO | MB_ICONQUESTION, lpTabInfo->NeedSave ? TEXT("\n・変更が無視されます") : TEXT("")) == IDYES)
                         	poppad_reload(ClickID);
+#else
+					if((!lpTabInfo->NeedSave && !bUndo) || 
+						msgboxf(hwnd, TEXT("Are you sure you want to reload the text? It will lead to these things.\n\n")
+						TEXT("\tYou lose the 'Undo' history and cannot take back any changes before the reloading.%s"),
+						TEXT("Warning"), MB_YESNO | MB_ICONQUESTION, lpTabInfo->NeedSave ? TEXT("\nlose all unsaved changes") : TEXT("")) == IDYES)
+                        	poppad_reload(ClickID);
+#endif
 					return 0;
 				}
 
@@ -2397,6 +2471,7 @@ LRESULT WINAPI EditProc (HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 						err_prt(hwnd);
 						return 0;
 					}
+					RunIconChange(activeFootyID);
 #ifdef JPNMSG
 					TMes(TEXT("実行ファイルを作成しました"));
 #else
@@ -2746,6 +2821,38 @@ LRESULT WINAPI EditProc (HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 					}
 					return 0;
 				}
+				
+
+				// by Tetr@pod
+				case IDM_SEPARATEWINDOWN :
+				{
+					Footy2ChangeView(activeFootyID, VIEWMODE_NORMAL);
+					nowViewMode = VIEWMODE_NORMAL;
+					return 0;
+				}
+				
+				case IDM_SEPARATEWINDOWV :
+				{
+					Footy2ChangeView(activeFootyID, VIEWMODE_VERTICAL);
+					nowViewMode = VIEWMODE_VERTICAL;
+					return 0;
+				}
+
+				case IDM_SEPARATEWINDOWH :
+				{
+					Footy2ChangeView(activeFootyID, VIEWMODE_HORIZONTAL);
+					nowViewMode = VIEWMODE_HORIZONTAL;
+					return 0;
+				}
+				
+				case IDM_SEPARATEWINDOWQ :
+				{				
+					Footy2ChangeView(activeFootyID, VIEWMODE_QUAD);
+					nowViewMode = VIEWMODE_QUAD;
+					return 0;
+				}
+
+				
 
 				case IDM_OPTION:
 					EnableWindow(hWndMain, FALSE);
@@ -2766,10 +2873,19 @@ LRESULT WINAPI EditProc (HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 					ImmReleaseContext(hFooty, hIMC);
 					return 0;
 				}
+				case IDM_GOOGLE:
+				{
+					// Google検索
+					getkw();
+					wsprintf(helpopt, TEXT("http://www.google.co.jp/search?q=%s&ie=Shift_JIS"),kwstr);
+					ShellExecute( NULL,NULL,helpopt,TEXT(""), TEXT(""),SW_SHOW );
+					return 0;
+				}
 
 				case IDM_RECONVERT:
 				{
 					// 未実装
+					keybd_event(28, 0, 0, 0);
 					return 0;
 				}
 
@@ -2983,50 +3099,94 @@ BOOL CALLBACK ConfigDlgProc (HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 			tvis.item.mask           = TVIF_TEXT | TVIF_PARAM;
 
 			tvis.hParent      = TVI_ROOT;
+#ifdef JPNMSG
 			tvis.item.pszText = TEXT("全般");
+#else
+			tvis.item.pszText = TEXT("Global");
+#endif
 			tvis.item.lParam  = NULL;
 			tvis.hParent = TreeView_InsertItem(hTree, &tvis);
-				tvis.item.pszText = TEXT("動作");
-				tvis.item.lParam  = (LPARAM)(hPage[0] = CreateDialog(hInst, TEXT("PP_BEHAVIOR"), hDlg, ConfigBehaviorPageProc));
+#ifdef JPNMSG
+			tvis.item.pszText = TEXT("動作");
+#else
+			tvis.item.pszText = TEXT("Behavior");
+#endif
+			tvis.item.lParam  = (LPARAM)(hPage[0] = CreateDialog(hInst, TEXT("PP_BEHAVIOR"), hDlg, ConfigBehaviorPageProc));
 				MoveWindow((HWND)tvis.item.lParam, rect.left, rect.top, rect.right, rect.bottom, TRUE);
 				hSelItem = TreeView_InsertItem(hTree, &tvis);
+#ifdef JPNMSG
 				tvis.item.pszText = TEXT("ディレクトリ");
+#else
+				tvis.item.pszText = TEXT("Directory");
+#endif
 				tvis.item.lParam  = (LPARAM)(hPage[1] = CreateDialog(hInst, TEXT("PP_DIRECTORY"), hDlg, ConfigDirectoryPageProc));
 				MoveWindow((HWND)tvis.item.lParam, rect.left, rect.top, rect.right, rect.bottom, TRUE);
 				TreeView_InsertItem(hTree, &tvis);
 			TreeView_Expand(hTree, tvis.hParent, TVE_EXPAND);
 
 			tvis.hParent      = TVI_ROOT;
+#ifdef JPNMSG
 			tvis.item.pszText = TEXT("エディタ");
+#else
+			tvis.item.pszText = TEXT("Editor");
+#endif
 			tvis.item.lParam  = NULL;
 			tvis.hParent = TreeView_InsertItem(hTree, &tvis);
+#ifdef JPNMSG
 				tvis.item.pszText = TEXT("フォント");
-				tvis.item.lParam  = (LPARAM)(hPage[2] = CreateDialog(hInst, TEXT("PP_FONT"), hDlg, ConfigFontPageProc));
+#else
+			tvis.item.pszText = TEXT("Font");
+#endif
+			tvis.item.lParam  = (LPARAM)(hPage[2] = CreateDialog(hInst, TEXT("PP_FONT"), hDlg, ConfigFontPageProc));
 				MoveWindow((HWND)tvis.item.lParam, rect.left, rect.top, rect.right, rect.bottom, TRUE);
 				TreeView_InsertItem(hTree, &tvis);
+#ifdef JPNMSG
 				tvis.item.pszText = TEXT("色");
+#else
+				tvis.item.pszText = TEXT("Color");
+#endif
 				tvis.item.lParam  = (LPARAM)(hPage[3] = CreateDialog(hInst, TEXT("PP_COLOR"), hDlg, ConfigColorPageProc));
 				MoveWindow((HWND)tvis.item.lParam, rect.left, rect.top, rect.right, rect.bottom, TRUE);
 				TreeView_InsertItem(hTree, &tvis);
+#ifdef JPNMSG
 				tvis.item.pszText = TEXT("表示");
+#else
+				tvis.item.pszText = TEXT("Display");
+#endif
 				tvis.item.lParam  = (LPARAM)(hPage[4] = CreateDialog(hInst, TEXT("PP_NONCHARACTOR"), hDlg, ConfigVisualPageProc));
 				MoveWindow((HWND)tvis.item.lParam, rect.left, rect.top, rect.right, rect.bottom, TRUE);
 				TreeView_InsertItem(hTree, &tvis);
+#ifdef JPNMSG
 				tvis.item.pszText = TEXT("色分けキーワード");
+#else
+				tvis.item.pszText = TEXT("Keywords");
+#endif
 				tvis.item.lParam  = (LPARAM)(hPage[5] = CreateDialog(hInst, TEXT("PP_KEYWORD"), hDlg, ConfigKeywordPageProc));
 				MoveWindow((HWND)tvis.item.lParam, rect.left, rect.top, rect.right, rect.bottom, TRUE);
 				TreeView_InsertItem(hTree, &tvis);
 			TreeView_Expand(hTree, tvis.hParent, TVE_EXPAND);
 
 			tvis.hParent      = TVI_ROOT;
+#ifdef JPNMSG
 			tvis.item.pszText = TEXT("ツール");
+#else
+			tvis.item.pszText = TEXT("Tool");
+#endif
 			tvis.item.lParam  = NULL;
 			tvis.hParent = TreeView_InsertItem(hTree, &tvis);
+#ifdef JPNMSG
 				tvis.item.pszText = TEXT("アドイン");
+#else
+			tvis.item.pszText = TEXT("AddOn");
+#endif
 				tvis.item.lParam  = (LPARAM)(hPage[6] = CreateDialog(hInst, TEXT("PP_ADDIN"), hDlg, ConfigAddinPageProc));
 				MoveWindow((HWND)tvis.item.lParam, rect.left, rect.top, rect.right, rect.bottom, TRUE);
 				TreeView_InsertItem(hTree, &tvis);
+#ifdef JPNMSG
 				tvis.item.pszText = TEXT("外部ツール");
+#else
+				tvis.item.pszText = TEXT("ExtTool");
+#endif
 				tvis.item.lParam  = (LPARAM)(hPage[7] = CreateDialog(hInst, TEXT("PP_EXTTOOLS"), hDlg, ConfigExtToolsPageProc));
 				MoveWindow((HWND)tvis.item.lParam, rect.left, rect.top, rect.right, rect.bottom, TRUE);
 				TreeView_InsertItem(hTree, &tvis);
@@ -3042,8 +3202,13 @@ BOOL CALLBACK ConfigDlgProc (HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 			hSubject = GetDlgItem(hDlg, IDC_SUBJECT);
 			GetClientRect(hSubject, &rect);
 			hOrgFont = (HFONT)SendMessage(hSubject, WM_GETFONT, 0, 0);
+#ifdef JPNMSG
 			hFont = CreateFont((rect.bottom-rect.top) * 3 / 5, 0, 0, 0, FW_DONTCARE, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
 				OUT_CHARACTER_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH, TEXT("ＭＳ Ｐゴシック"));
+#else
+			hFont = CreateFont((rect.bottom - rect.top) * 3 / 5, 0, 0, 0, FW_DONTCARE, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+				OUT_CHARACTER_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH, TEXT("MS Shell Dlg"));
+#endif
 			SendMessage(hSubject, WM_SETFONT, (WPARAM)hFont, TRUE);
 
 			// デフォルトのページを表示させる
@@ -3097,8 +3262,13 @@ BOOL CALLBACK ConfigDlgProc (HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 					return TRUE;
 
 				case IDM_BUTTON1:
+#ifdef JPNMSG
 					if(MessageBox(hDlg, TEXT("現在開いているページの設定を初期状態に戻しますが、よろしいですか？\n")
 						TEXT("([OK]ボタンを押さなければ、エディタには反映されません)"), TEXT("確認"), MB_YESNO | MB_ICONQUESTION) == IDYES)
+#else
+					if (MessageBox(hDlg, TEXT("Restore default. Are you sure?\n")
+						TEXT("( Press OK to save setting )"), TEXT("Notice"), MB_YESNO | MB_ICONQUESTION) == IDYES)
+#endif
 							SendMessage(hOldPage, PM_SETDEFAULT, 0, 0L);
 					return TRUE;
 			}
@@ -3149,6 +3319,10 @@ BOOL CALLBACK ConfigBehaviorPageProc (HWND hDlg, UINT message, WPARAM /*wParam*/
 			CheckDlgButton(hDlg, IDC_RADIO3+hsp_helpmode, BST_CHECKED);
 			CheckDlgButton(hDlg, IDC_CHECK1, bAutoIndent != FALSE);
 			CheckDlgButton(hDlg, IDC_CHECK2, flg_hspat );
+			CheckDlgButton(hDlg, IDC_CHECK3, BackupNoDelete );
+			CheckDlgButton(hDlg, IDC_CHECK4, NotifyBackup );
+			SetDlgItemInt(hDlg, IDC_EDIT1, autobackup, FALSE);
+			CheckDlgButton(hDlg, IDC_CHECK5, UseNewReplace);// by Tetr@pod
 			return TRUE;
 
 		case PM_ISAPPLICABLE:
@@ -3160,6 +3334,16 @@ BOOL CALLBACK ConfigBehaviorPageProc (HWND hDlg, UINT message, WPARAM /*wParam*/
 			bAutoIndent = BST_CHECKED == IsDlgButtonChecked(hDlg, IDC_CHECK1);
 			hsp_helpmode= CheckRadio(hDlg, IDC_RADIO3, 4);
 			flg_hspat   = IsDlgButtonChecked(hDlg, IDC_CHECK2);
+			autobackup = GetDlgItemInt(hDlg, IDC_EDIT1, NULL, FALSE);
+			BackupNoDelete = BST_CHECKED == IsDlgButtonChecked(hDlg, IDC_CHECK3);
+			NotifyBackup = BST_CHECKED == IsDlgButtonChecked(hDlg, IDC_CHECK4);
+			UseNewReplace = BST_CHECKED == IsDlgButtonChecked(hDlg, IDC_CHECK5);// by Tetr@pod
+			// タイマー削除
+			KillTimer(hWndMain, AutoBackupTimer);
+			if (autobackup > 0){
+				// 再登録
+				AutoBackupTimer = SetTimer(hWndMain, TIMERID_AUTOBACKUP, autobackup*1000, 0);
+			}
 			return TRUE;
 
 		case PM_SETDEFAULT:
@@ -3171,6 +3355,10 @@ BOOL CALLBACK ConfigBehaviorPageProc (HWND hDlg, UINT message, WPARAM /*wParam*/
 			CheckDlgButton(hDlg, IDC_RADIO6, BST_UNCHECKED);
 			CheckDlgButton(hDlg, IDC_CHECK1, BST_CHECKED);
 			CheckDlgButton(hDlg, IDC_CHECK2, BST_CHECKED);
+			CheckDlgButton(hDlg, IDC_CHECK3, BST_UNCHECKED);
+			CheckDlgButton(hDlg, IDC_CHECK4, BST_UNCHECKED);
+			SetDlgItemInt(hDlg, IDC_EDIT1, 0, FALSE);
+			CheckDlgButton(hDlg, IDC_CHECK5, BST_UNCHECKED);// by Tetr@pod
 			return TRUE;
 	}
 	return FALSE;
@@ -3218,12 +3406,26 @@ COLORREF crDefColor[] = {
 BOOL CALLBACK ConfigColorPageProc (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	static MYCOLORREF crColor[21];
-	LPCTSTR szCategory[] = { TEXT("文字の色分け"), TEXT("特殊な記号の配色"), TEXT("エディタの配色"), TEXT("行番号表示領域の配色"), TEXT("ルーラーの配色")};
+#ifdef JPNMSG
+	LPCTSTR szCategory[] = { TEXT("文字の色分け"), TEXT("特殊な記号の配色"), TEXT("エディタの配色"), TEXT("行番号表示領域の配色"), TEXT("ルーラーの配色"), TEXT("リンクの配色"), TEXT("ユーザー定義命令・関数の色分け")};
 	LPCTSTR szCharItem[] = { TEXT("通常の文字"), TEXT("命令/関数"), TEXT("プリプロセッサ命令"), TEXT("文字列"), TEXT("マクロ"), TEXT("コメント"), TEXT("ラベル") };
 	LPCTSTR szNonCharItem[] = { TEXT("半角スペース"), TEXT("全角スペース"), TEXT("TAB文字"), TEXT("改行記号"), TEXT("[EOF](ファイル終端)記号") };
 	LPCTSTR szEditItem[] = { TEXT("全体の背景色"), TEXT("キャレット行の下線"), TEXT("行番号とエディタの境界線") };
 	LPCTSTR szLineNumItem[] = { TEXT("行番号"), TEXT("キャレット行の強調") };
 	LPCTSTR szRolerItem[] = { TEXT("数字"), TEXT("背景色"), TEXT("目盛り"), TEXT("キャレット位置の強調") };
+
+	LPCTSTR szClickableItem[] = { TEXT("URL"), TEXT("URLのアンダーバー"), TEXT("メールアドレス"), TEXT("メールアドレスのアンダーバー"), TEXT("リンクラベル"), TEXT("リンクラベルのアンダーバー") };// 便宜上リンクラベルと呼びます by Tetr@pod
+#else
+	LPCTSTR szCategory[] = { TEXT("Words color"), TEXT("Special symbol"), TEXT("Editor color"), TEXT("Line Number color"), TEXT("ruler color"), TEXT("link color"), TEXT("User command/function") };
+	LPCTSTR szCharItem[] = { TEXT("Words"), TEXT("command/function"), TEXT("preprocessor"), TEXT("strings"), TEXT("macro"), TEXT("comment"), TEXT("label") };
+	LPCTSTR szNonCharItem[] = { TEXT("Space"), TEXT("JPN Space"), TEXT("Tab"), TEXT("CR"), TEXT("[EOF](End of File)") };
+	LPCTSTR szEditItem[] = { TEXT("Background color"), TEXT("Caret underline"), TEXT("Divider") };
+	LPCTSTR szLineNumItem[] = { TEXT("Line Number"), TEXT("Line Emphasize") };
+	LPCTSTR szRolerItem[] = { TEXT("Numeric"), TEXT("Background color"), TEXT("Scaler"), TEXT("Caret Emphasize") };
+
+	LPCTSTR szClickableItem[] = { TEXT("URL"), TEXT("URL underline"), TEXT("Mail Address"), TEXT("Mail Address underline"), TEXT("Link Label"), TEXT("Link Label underline") };// 便宜上リンクラベルと呼びます by Tetr@pod
+#endif
+	LPCTSTR szUserFuncItem[] = { TEXT("#deffunc, #defcfunc"), TEXT("#modinit, #modterm"), TEXT("#modfunc, #modcfunc"), TEXT("#func, #cfunc"), TEXT("#cmd"), TEXT("#comfunc"), TEXT("#define"), TEXT("#define ctype") };// by Tetr@pod
 
 	typedef struct tagItems{
 		LPCTSTR *item;
@@ -3231,11 +3433,14 @@ BOOL CALLBACK ConfigColorPageProc (HWND hDlg, UINT message, WPARAM wParam, LPARA
 	} ITEMS;
 
 	ITEMS items[] = {
-		szCharItem,    sizeof(szCharItem)    / sizeof(szCharItem[0]),
-		szNonCharItem, sizeof(szNonCharItem) / sizeof(szNonCharItem[0]),
-		szEditItem,    sizeof(szEditItem)    / sizeof(szEditItem[0]),
-		szLineNumItem, sizeof(szLineNumItem) / sizeof(szLineNumItem[0]),
-		szRolerItem,   sizeof(szRolerItem)   / sizeof(szRolerItem[0]),
+		szCharItem,      sizeof(szCharItem)      / sizeof(szCharItem[0]),
+		szNonCharItem,   sizeof(szNonCharItem)   / sizeof(szNonCharItem[0]),
+		szEditItem,      sizeof(szEditItem)      / sizeof(szEditItem[0]),
+		szLineNumItem,   sizeof(szLineNumItem)   / sizeof(szLineNumItem[0]),
+		szRolerItem,     sizeof(szRolerItem)     / sizeof(szRolerItem[0]),
+
+		szClickableItem, sizeof(szClickableItem) / sizeof(szClickableItem[0]),// by Tetr@pod
+		szUserFuncItem,  sizeof(szUserFuncItem)  / sizeof(szUserFuncItem[0]),// by Tetr@pod
 	};
 
 	switch(message){
@@ -3247,6 +3452,7 @@ BOOL CALLBACK ConfigColorPageProc (HWND hDlg, UINT message, WPARAM wParam, LPARA
 				SendDlgItemMessage(hDlg, IDC_COMBO1, CB_ADDSTRING, 0, (LPARAM)szCategory[i]);
 			SendDlgItemMessage(hDlg, IDC_COMBO1, CB_SETCURSEL, 0, 0L);
 
+#ifdef JPNMSG
 			LPCTSTR szColorName[] = {
 				TEXT("黒"),
 				TEXT("白"),
@@ -3270,6 +3476,31 @@ BOOL CALLBACK ConfigColorPageProc (HWND hDlg, UINT message, WPARAM wParam, LPARA
 				TEXT("ルーラー強調の既定色"),
 				TEXT("ユーザー定義..."),
 			};
+#else
+			LPCTSTR szColorName[] = {
+				TEXT("Black"),
+				TEXT("White"),
+				TEXT("Red"),
+				TEXT("Green"),
+				TEXT("Blue"),
+				TEXT("Yellow"),
+				TEXT("Yellow Green"),
+				TEXT("Light Blue"),
+				TEXT("Pink"),
+				TEXT("Magenta"),
+				TEXT("Orange"),
+				TEXT("Dark Green"),
+				TEXT("Sky Blue"),
+				TEXT("Dark Brown"),
+				TEXT("Line Number Default"),
+				TEXT("Divider Default"),
+				TEXT("Caret Line Number Default"),
+				TEXT("Caret Line Underline Default"),
+				TEXT("Ruler Background Default"),
+				TEXT("Ruler Emphasis Default"),
+				TEXT("User Define..."),
+			};
+#endif
 
 			num = sizeof(szColorName) / sizeof(szColorName[0]);
 			for(i = 0; i < num; i++)
@@ -3277,6 +3508,20 @@ BOOL CALLBACK ConfigColorPageProc (HWND hDlg, UINT message, WPARAM wParam, LPARA
 
 			CopyMemory(crColor, &color, sizeof(crColor));
 			PostMessage(hDlg, WM_COMMAND, MAKELONG(IDC_COMBO1, CBN_SELCHANGE), (LPARAM)GetDlgItem(hDlg, IDC_COMBO1));
+
+			if (bCustomColor == true){
+				CheckDlgButton(hDlg, IDC_CHECK1, BST_CHECKED);
+			}else{
+				CheckDlgButton(hDlg, IDC_CHECK1, BST_UNCHECKED);
+			}
+			CheckDlgButton(hDlg, IDC_CHECK2, speedDraw );
+
+			CheckDlgButton(hDlg, IDC_CHECK3, CustomMatchCase );// by Tetr@pod
+			CheckDlgButton(hDlg, IDC_CHECK4, UseClickableLabel );// by Tetr@pod
+			CheckDlgButton(hDlg, IDC_CHECK5, UseSearchFunction );// by Tetr@pod
+
+			CheckDlgButton(hDlg, IDC_CHECK6, ChangeColor_func );// by Tetr@pod
+			CheckDlgButton(hDlg, IDC_CHECK7, ChangeColor_define );// by Tetr@pod
 
 			return TRUE;
 		}
@@ -3342,12 +3587,29 @@ BOOL CALLBACK ConfigColorPageProc (HWND hDlg, UINT message, WPARAM wParam, LPARA
 		case PM_APPLY:
 			CopyMemory(&color, crColor, sizeof(crColor));
 			SetAllEditColor();
+			bCustomColor       = BST_CHECKED == IsDlgButtonChecked(hDlg, IDC_CHECK1);
+			speedDraw          = BST_CHECKED == IsDlgButtonChecked(hDlg, IDC_CHECK2);
+
+			CustomMatchCase    = BST_CHECKED == IsDlgButtonChecked(hDlg, IDC_CHECK3);// by Tetr@pod
+			UseClickableLabel  = BST_CHECKED == IsDlgButtonChecked(hDlg, IDC_CHECK4);// by Tetr@pod
+			UseSearchFunction  = BST_CHECKED == IsDlgButtonChecked(hDlg, IDC_CHECK5);// by Tetr@pod
+
+			ChangeColor_func     = BST_CHECKED == IsDlgButtonChecked(hDlg, IDC_CHECK6);// by Tetr@pod
+			ChangeColor_define   = BST_CHECKED == IsDlgButtonChecked(hDlg, IDC_CHECK7);// by Tetr@pod
+
+
 			ResetClassify();
 			return TRUE;
 
 		case PM_SETDEFAULT:
 			DefaultColor((MYCOLOR *)crColor);
 			PostMessage(hDlg, WM_COMMAND, MAKELONG(IDC_COMBO1, CBN_SELCHANGE), (LPARAM)GetDlgItem(hDlg, IDC_COMBO1));
+			CheckDlgButton(hDlg, IDC_CHECK1, BST_UNCHECKED);
+			CheckDlgButton(hDlg, IDC_CHECK2, BST_UNCHECKED);
+			CheckDlgButton(hDlg, IDC_CHECK3, BST_UNCHECKED);// by Tetr@pod
+			CheckDlgButton(hDlg, IDC_CHECK4, BST_UNCHECKED);// by Tetr@pod
+			CheckDlgButton(hDlg, IDC_CHECK5, BST_UNCHECKED);// by Tetr@pod
+			SetDlgItemInt(hDlg, IDC_EDIT1, 0, FALSE);// by Tetr@pod
 			return TRUE;
 
 	}
@@ -3506,7 +3768,11 @@ static BOOL CALLBACK SelectExtToolProc(HWND hDlg, UINT message, WPARAM wParam, L
 
 				case IDOK:
 					if(GetWindowTextLength(GetDlgItem(hDlg, IDC_EDIT2)) == 0){
+#ifdef JPNMSG
 						MessageBox(hDlg, TEXT("ファイル名を省略することはできません。"), TEXT("error"), MB_OK | MB_ICONERROR);
+#else
+						MessageBox(hDlg, TEXT("You must specify a file name."), TEXT("error"), MB_OK | MB_ICONERROR);
+#endif
 						return TRUE;
 					}
 
@@ -3535,7 +3801,11 @@ BOOL CALLBACK ConfigExtToolsPageProc (HWND hDlg, UINT message, WPARAM wParam, LP
 		{
 			HWND hListView;
 			LVITEM lvi;
+#ifdef JPNMSG
 			LPTSTR szColumnTitle[] = { TEXT("名前"), TEXT("ファイル パス"), };
+#else
+			LPTSTR szColumnTitle[] = { TEXT("Name"), TEXT("File Path"), };
+#endif
 			LVCOLUMN lvc;
 			int i, nSize;
 			EXTTOOLINFO *lpExtToolInfo, *lpNewExtToolInfo;
@@ -3807,16 +4077,52 @@ BOOL CALLBACK ConfigExtToolsPageProc (HWND hDlg, UINT message, WPARAM wParam, LP
 static void GetStyleStr(LPTSTR buf, LOGFONT *logfont)
 {
 	lstrcpy(buf, TEXT(""));
-	if(logfont->lfWeight >= FW_BOLD) lstrcpy(buf, TEXT("太字 "));
-	if(logfont->lfItalic) lstrcat(buf, TEXT("斜体"));
-	if(lstrlen(buf) == 0) lstrcpy(buf, TEXT("標準"));
+	if (logfont->lfWeight >= FW_BOLD) {
+#ifdef JPNMSG
+		lstrcpy(buf, TEXT("太字 "));
+#else
+		lstrcpy(buf, TEXT("Bold "));
+#endif
+	}
+	if (logfont->lfItalic) {
+#ifdef JPNMSG
+		lstrcat(buf, TEXT("斜体"));
+#else
+		lstrcat(buf, TEXT("Italic"));
+#endif
+	}
+	if (lstrlen(buf) == 0) {
+#ifdef JPNMSG
+		lstrcpy(buf, TEXT("標準"));
+#else
+		lstrcpy(buf, TEXT("Normal"));
+#endif
+	}
 }
 static void GetExStyleStr(LPTSTR buf, LOGFONT *logfont)
 {
 	lstrcpy(buf, TEXT(""));
-	if(logfont->lfStrikeOut) lstrcat(buf, TEXT("取り消し線 "));
-	if(logfont->lfUnderline) lstrcat(buf, TEXT("下線"));
-	if(lstrlen(buf) == 0) lstrcpy(buf, TEXT("無し"));
+	if (logfont->lfStrikeOut) {
+#ifdef JPNMSG
+		lstrcat(buf, TEXT("取り消し線 "));
+#else
+		lstrcat(buf, TEXT("Strikeout "));
+#endif
+	}
+	if (logfont->lfUnderline) {
+#ifdef JPNMSG
+		lstrcat(buf, TEXT("下線"));
+#else
+		lstrcat(buf, TEXT("Underline"));
+#endif
+	}
+	if (lstrlen(buf) == 0) {
+#ifdef JPNMSG
+		lstrcpy(buf, TEXT("無し"));
+#else
+		lstrcpy(buf, TEXT("None"));
+#endif
+	}
 	return;
 }
 BOOL CALLBACK ConfigFontPageProc (HWND hDlg, UINT message, WPARAM wParam, LPARAM /*lParam*/)
@@ -3845,7 +4151,14 @@ BOOL CALLBACK ConfigFontPageProc (HWND hDlg, UINT message, WPARAM wParam, LPARAM
 			SendDlgItemMessage(hDlg, IDC_STATIC7, WM_SETFONT, (WPARAM)hEditFont, TRUE);
 			SendDlgItemMessage(hDlg, IDC_STATIC8, WM_SETFONT, (WPARAM)hTabFont, TRUE);				
 
+			if (forcefont == 1){
+				CheckDlgButton(hDlg, IDC_CHECK1, BST_CHECKED);
+			}else{
+				CheckDlgButton(hDlg, IDC_CHECK1, BST_UNCHECKED);
+			}
+
 			PopFontInitChooseFont(NULL, NULL);
+
 			return TRUE;
 		}
 
@@ -3907,6 +4220,8 @@ BOOL CALLBACK ConfigFontPageProc (HWND hDlg, UINT message, WPARAM wParam, LPARAM
 		case PM_APPLY:
 			PopFontApplyEditFont();
 			PopFontApplyTabFont();
+			
+			forcefont = IsDlgButtonChecked(hDlg, IDC_CHECK1);
 			return TRUE;
 
 		case PM_SETDEFAULT:
@@ -3938,6 +4253,8 @@ BOOL CALLBACK ConfigFontPageProc (HWND hDlg, UINT message, WPARAM wParam, LPARAM
 			if(hOrgTabFont != NULL)  DeleteObject(hOrgTabFont);
 
 			PopFontInitChooseFont(&editfont, &tabfont);
+			// 改造版のフォント強制
+			CheckDlgButton(hDlg, IDC_CHECK1, BST_UNCHECKED);
 			return TRUE;
 		}
 	}
@@ -4082,7 +4399,7 @@ BOOL CALLBACK ConfigKeywordPageProc (HWND hDlg, UINT message, WPARAM wParam, LPA
 	return FALSE;
 }
 
-BOOL CALLBACK ConfigVisualPageProc (HWND hDlg, UINT message, WPARAM /*wParam*/, LPARAM /*lParam*/)
+BOOL CALLBACK ConfigVisualPageProc (HWND hDlg, UINT message, WPARAM wParam, LPARAM /*lParam*/)
 {
 	switch(message){
 		case WM_INITDIALOG:
@@ -4096,13 +4413,15 @@ BOOL CALLBACK ConfigVisualPageProc (HWND hDlg, UINT message, WPARAM /*wParam*/, 
 			CheckDlgButton(hDlg, IDC_CHECK7, flg_statbar );
 			CheckDlgButton(hDlg, IDC_CHECK8, hscroll_flag );
 			CheckDlgButton(hDlg, IDC_CHECK9, flg_toolbar );
+			CheckDlgButton(hDlg, IDC_CHECK10, bDrawUnderline );
 
 			SetDlgItemInt(hDlg, IDC_EDIT1, tabsize,     FALSE);
 			SetDlgItemInt(hDlg, IDC_EDIT2, rulerheight, FALSE);
 			SetDlgItemInt(hDlg, IDC_EDIT3, linewidth,   FALSE);
 			SetDlgItemInt(hDlg, IDC_EDIT4, linespace,   FALSE);
+			SetDlgItemText(hDlg, IDC_EDIT9, BgImagePath);
 			return TRUE;
-
+		
 		case PM_ISAPPLICABLE:
 		{
 			BOOL bSuccess;
@@ -4116,8 +4435,13 @@ BOOL CALLBACK ConfigVisualPageProc (HWND hDlg, UINT message, WPARAM /*wParam*/, 
 				GetDlgItemInt(hDlg, IDC_EDIT4, &bSuccess, FALSE);
 			} while(0);
 			if(!bSuccess)
+#ifdef JPNMSG
 				MessageBox(hDlg, TEXT("表示設定の適用に失敗しました。\nサイズには0以上の整数を入力して下さい。"), TEXT("Error"),
 					MB_OK | MB_ICONERROR);
+#else
+				MessageBox(hDlg, TEXT("You must specify integer above 0."), TEXT("Error"),
+					MB_OK | MB_ICONERROR);
+#endif
 			SetWindowLong(hDlg, DWL_MSGRESULT, bSuccess);
 			return TRUE;
 		}
@@ -4133,11 +4457,16 @@ BOOL CALLBACK ConfigVisualPageProc (HWND hDlg, UINT message, WPARAM /*wParam*/, 
 			flg_statbar   = IsDlgButtonChecked(hDlg, IDC_CHECK7);
 			hscroll_flag  = IsDlgButtonChecked(hDlg, IDC_CHECK8);
 			flg_toolbar   = IsDlgButtonChecked(hDlg, IDC_CHECK9);
+			bDrawUnderline = (BOOL)IsDlgButtonChecked(hDlg, IDC_CHECK10);
 
 			tabsize     = GetDlgItemInt(hDlg, IDC_EDIT1, NULL, FALSE);
 			rulerheight = GetDlgItemInt(hDlg, IDC_EDIT2, NULL, FALSE);
 			linewidth   = GetDlgItemInt(hDlg, IDC_EDIT3, NULL, FALSE);
 			linespace   = GetDlgItemInt(hDlg, IDC_EDIT4, NULL, FALSE);
+			GetDlgItemText(hDlg, IDC_EDIT9, (LPTSTR)&BgImagePath, _MAX_PATH);
+
+			// これないと、アンダーバーの設定が適用されない
+			PopFontApplyEditFont();
 
 			poppad_setalledit();
 			poppad_setsb( hscroll_flag );
@@ -4155,12 +4484,25 @@ BOOL CALLBACK ConfigVisualPageProc (HWND hDlg, UINT message, WPARAM /*wParam*/, 
 			CheckDlgButton(hDlg, IDC_CHECK7, BST_CHECKED);
 			CheckDlgButton(hDlg, IDC_CHECK8, BST_CHECKED);
 			CheckDlgButton(hDlg, IDC_CHECK9, BST_CHECKED);
+			CheckDlgButton(hDlg, IDC_CHECK10, BST_UNCHECKED);
 
 			SetDlgItemInt(hDlg, IDC_EDIT1, 4,  FALSE);
 			SetDlgItemInt(hDlg, IDC_EDIT2, 10, FALSE);
 			SetDlgItemInt(hDlg, IDC_EDIT3, 50, FALSE);
 			SetDlgItemInt(hDlg, IDC_EDIT4, 0,  FALSE);
+			SetDlgItemText(hDlg, IDC_EDIT9, TEXT(""));
 			return TRUE;
+		case WM_COMMAND:
+		switch(LOWORD(wParam)){
+				case IDC_BUTTON1:
+				{
+					TCHAR szFileName[_MAX_PATH + 1] = TEXT("");
+					TCHAR szFileTitle[_MAX_PATH + 1] = TEXT("");
+					if(PopFileOpenDlgImg(hDlg, szFileName, szFileTitle))
+						SetDlgItemText(hDlg, IDC_EDIT9, szFileName);
+					return TRUE;
+				}
+		}
 	}
 	return FALSE;
 }
@@ -4309,3 +4651,364 @@ void __stdcall OnFooty2TextModified(int id, void * /*pParam*/, int /*nCause*/)
 //	TrackPopupMenu(hSubMenu, TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwndClient, NULL);
 //	return;
 //}
+void GetBackupPath(LPTSTR backuppath, int size){
+	// EXEのあるディレクトリ
+	TCHAR exepath[MAX_PATH+1];
+	GetModuleFileName(0, exepath, MAX_PATH);
+	PathRemoveFileSpec(exepath);
+
+	// バックアップフォルダ
+	_tcscpy_s(backuppath, size, exepath);
+	_tcscat_s(backuppath, size,TEXT("\\backup\\"));
+}
+
+void BackupDelete(LPCTSTR backuppath){
+	int i;
+	// 無限ループは怖いので縛っておく
+	for (i = 0; i < 4096; i++){
+		TCHAR txtpath[MAX_PATH*2];
+		TCHAR hsppath[MAX_PATH*2];
+		TCHAR number[256];
+		_stprintf_s(number, 256, TEXT("%d"), i);
+		_tcscpy_s(txtpath, MAX_PATH*2, backuppath);
+		_tcscpy_s(hsppath, MAX_PATH*2, backuppath);
+		_tcscat_s(txtpath, MAX_PATH*2, number);
+		_tcscat_s(txtpath, MAX_PATH*2, TEXT(".txt"));
+		_tcscat_s(hsppath, MAX_PATH*2, number);
+		_tcscat_s(hsppath, MAX_PATH*2, TEXT(".hsp"));
+		if (!PathFileExists(txtpath))
+			break;
+
+		DeleteFile(txtpath);
+		DeleteFile(hsppath);
+	}
+}
+
+void HSPBackupSave(LPCTSTR backuppath, LPTSTR path, int nFootyID){
+	if (!PathIsDirectory(backuppath)){
+		CreateDirectory(backuppath, NULL);
+		if (!PathIsDirectory(backuppath))
+			return;
+	}
+	
+	int size = Footy2GetTextLength(nFootyID, LM_CRLF);
+	LPTSTR bufhsp = (LPTSTR)calloc(size + 2,sizeof(char));
+	Footy2GetText(nFootyID, bufhsp, LM_CRLF, size + 1);
+	/*
+	FILE *fphsp;
+	fphsp = fopen(path, "wb");
+	if (fphsp == NULL)
+		return;
+	fputs(bufhsp, fphsp);
+	fclose(fphsp);
+	*/
+	HANDLE fp;
+	fp = CreateFile(path, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_ALWAYS, FILE_FLAG_WRITE_THROUGH, NULL);
+	if (fp == NULL)
+		return;
+	DWORD NumberOfBytesWritten = 0;
+	WriteFile(fp, bufhsp, size, &NumberOfBytesWritten, NULL);
+	FlushFileBuffers(fp);
+	CloseHandle(fp);
+
+	free(bufhsp);
+}
+
+void TXTBackupSave(LPCTSTR backuppath, LPTSTR path, LPTSTR data){
+	if (!PathIsDirectory(backuppath)){
+		CreateDirectory(backuppath, NULL);
+		if (!PathIsDirectory(backuppath))
+			return;
+	}
+	/*
+	FILE *fptxt;
+	fptxt = fopen(path, "wb");
+	if (fptxt == NULL)
+		return;
+	fputs(data, fptxt);
+	fclose(fptxt);
+	*/
+	HANDLE fp;
+	fp = CreateFile(path, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_ALWAYS, FILE_FLAG_WRITE_THROUGH, NULL);
+	if (fp == NULL)
+		return;
+	DWORD NumberOfBytesWritten = 0;
+	WriteFile(fp, data, _tcslen(data), &NumberOfBytesWritten, NULL);
+	FlushFileBuffers(fp);
+	CloseHandle(fp);
+}
+
+// 自動バックアップ by inovia
+void AutoBackUp(void){
+	TABINFO *lpTabInfo;
+	int n = TabCtrl_GetItemCount(hwndTab), i, nFootyID;
+
+	// 未保存の場合はファイルパスと内容を記録(1度も保存しておらずパスがない場合は無題というか空欄にしておく)
+	// 保存済みの場合は内容は保存せず、ファイルパスのみ記録
+	// 0 番から始めるので、 0.txt がパスを格納、 0.hsp がファイルの内容を格納するファイルとする
+	// フォルダ名はbackupに保存する
+
+	TCHAR backuppath[MAX_PATH*2] = {0};
+	GetBackupPath(backuppath, MAX_PATH*2);
+	BackupDelete(backuppath);
+
+	// タブの数だけループする
+	for (i = 0; i < n; i++){
+		lpTabInfo = GetTabInfo(i);
+
+		nFootyID = lpTabInfo->FootyID;
+
+		TCHAR txtpath[MAX_PATH*2] = {0};
+		TCHAR hsppath[MAX_PATH*2] = {0};
+		TCHAR number[256] = {0};
+		_stprintf_s(number, 256, TEXT("%d"), i);
+		_tcscpy_s(txtpath, MAX_PATH*2, backuppath);
+		_tcscpy_s(hsppath, MAX_PATH*2, backuppath);
+		_tcscat_s(txtpath, MAX_PATH*2, number);
+		_tcscat_s(txtpath, MAX_PATH*2, TEXT(".txt"));
+		_tcscat_s(hsppath, MAX_PATH*2, number);
+		_tcscat_s(hsppath, MAX_PATH*2, TEXT(".hsp"));
+		
+		// 未保存の場合はファイルパスと内容を記録
+		if (lpTabInfo->NeedSave == TRUE){
+			TXTBackupSave(backuppath, txtpath, lpTabInfo->FileName);
+			HSPBackupSave(backuppath, hsppath, nFootyID);
+		}else{
+			// 保存済みの場合はファイルパスのみ記録
+			TXTBackupSave(backuppath, txtpath, lpTabInfo->FileName);
+		}
+		//MessageBoxA(0,"ループ内","",0);
+		//
+	}
+
+	if (NotifyBackup == TRUE){
+		TCHAR msg[256] = {0};
+		SYSTEMTIME st;
+		GetLocalTime(&st);
+#ifdef JPNMSG
+		_stprintf_s(msg, 256, TEXT("%04d/%02d/%02d %02d:%02d:%02d に自動バックアップしました"),st.wYear,st.wMonth,st.wDay,st.wHour,st.wMinute,st.wSecond);
+#else
+		_stprintf_s(msg, 256, TEXT("Auto backup on %04d/%02d/%02d %02d:%02d:%02d."), st.wMonth, st.wDay, st.wYear, st.wHour, st.wMinute, st.wSecond);
+#endif
+		Statusbar_mes(msg);
+	}
+	
+}
+
+// バックアップから復元する
+void ReadBackup(void){
+	// バックアップを削除せずコピーする場合
+	if (BackupNoDelete == TRUE){
+		BackupCopy();
+	}
+	
+	TCHAR backuppath[MAX_PATH*2];
+	GetBackupPath(backuppath, MAX_PATH*2);
+	int i;
+	// 無限ループは怖いので縛っておく
+	for (i = 0; i < 4096; i++){
+		TCHAR txtpath[MAX_PATH*2];
+		TCHAR hsppath[MAX_PATH*2];
+		TCHAR number[256];
+		_stprintf_s(number, 256, TEXT("%d"), i);
+		_tcscpy_s(txtpath, MAX_PATH*2,  backuppath);
+		_tcscpy_s(hsppath, MAX_PATH*2, backuppath);
+		_tcscat_s(txtpath, MAX_PATH*2, number);
+		_tcscat_s(txtpath, MAX_PATH*2, TEXT(".txt"));
+		_tcscat_s(hsppath, MAX_PATH*2, number);
+		_tcscat_s(hsppath, MAX_PATH*2, TEXT(".hsp"));
+		if (!PathFileExists(txtpath))
+			break;
+		
+
+		// .txtを開く処理
+		TABINFO *lpTabInfo;
+		LPTSTR buf = NULL, buf2 = NULL;
+		if (ReadFileBuffer(txtpath, &buf) == -1){
+			continue;
+		}
+		
+		if (_tcscmp(buf, TEXT("")) == 0){
+			// 1度も保存していない
+			CreateTab(activeID, TEXT(""), TEXT(""), TEXT(""));
+			lpTabInfo = GetTabInfo(activeID);
+			if (ReadFileBuffer(hsppath, &buf2) == -1){
+				CloseFileBuffer(buf);
+				//MessageBoxA(0,"直読みから読み込み失敗！","",0);
+				continue;
+			}
+			Footy2SetText(lpTabInfo->FootyID, buf2);
+			lpTabInfo->NeedSave = TRUE;
+			SetClassify(lpTabInfo->FootyID);
+			DoCaption (TEXT(""), activeID) ;
+			CloseFileBuffer(buf);
+			CloseFileBuffer(buf2);
+			//MessageBoxA(0,"直読みから読み込み成功！","",0);
+		}else if (!PathFileExists(buf)){
+			// 存在しないパスの場合はスルー
+			CloseFileBuffer(buf);
+			//MessageBoxA(0,"そんなの存在しない","",0);
+			continue;
+		}else{
+			// ファイルが存在する場合
+			TCHAR TitleName[512], DirName[512];
+			// コポー
+			_tcscpy_s(DirName, 512, buf);
+			// ディレクトリのみにする
+			PathRemoveFileSpec(DirName);
+			// コポー
+			_tcscpy_s(TitleName, 512, buf);
+			// ファイル名のみにする
+			PathStripPath(TitleName);
+			CreateTab(activeID, TitleName, buf, DirName);
+			lpTabInfo = GetTabInfo(activeID);
+			if (!PathFileExists(hsppath)){
+				if (!PopFileRead(lpTabInfo->FootyID, buf)){
+					//MessageBoxA(0,"PopFileReadから読み込み失敗","",0);
+					CloseFileBuffer(buf);
+					continue;
+				}
+				//MessageBoxA(0,"PopFileReadから読み込み成功","",0);
+			}else{
+				// 見つからない場合
+				if (ReadFileBuffer(hsppath, &buf2) == -1){
+					CloseFileBuffer(buf);
+					//MessageBoxA(0,"直読みから読み込み失敗したｗｗｗ！","",0);
+					continue;
+				}
+				//MessageBoxA(0,buf2,buf,0);
+				Footy2SetText(lpTabInfo->FootyID, buf2);
+				lpTabInfo->NeedSave = TRUE;
+				CloseFileBuffer(buf2);
+				//MessageBoxA(0,"直読みから読み込み成功","",0);
+			}
+			DoCaption (TitleName, activeID) ;
+			SetClassify(lpTabInfo->FootyID);
+			CloseFileBuffer(buf);
+		}
+
+		ULONGLONG ullFileIndex;
+		ullFileIndex = GetFileIndex(szFileName);
+		lpTabInfo->FileIndex = ullFileIndex;
+
+	}
+}
+
+void BackupCopy(void){
+	TCHAR backuppath[MAX_PATH*2];
+	TCHAR backupcopyfolder[MAX_PATH*2];
+	GetBackupPath(backuppath, MAX_PATH*2);
+	_tcscpy_s(backupcopyfolder, MAX_PATH*2, backuppath);
+	TCHAR t[256] = {0};
+	SYSTEMTIME st;
+	GetLocalTime(&st);
+	_stprintf_s(t, 256, TEXT("%04d%02d%02d %02d%02d%02d"),st.wYear,st.wMonth,st.wDay,st.wHour,st.wMinute,st.wSecond);
+	_tcscat_s(backupcopyfolder, MAX_PATH*2, t);
+	_tcscat_s(backupcopyfolder, MAX_PATH*2, TEXT("\\"));
+	//MessageBoxA(hWndMain,backupcopyfolder,"",0);
+	if (!CreateDirectory(backupcopyfolder, NULL)){
+#ifdef JPNMSG
+		MessageBox(hWndMain,TEXT("フォルダの作成に失敗しました。バックアップのコピーは作成されませんでした。\nファイル保全のため強制終了します。再度このメッセージが出る場合は、backupフォルダを削除するか移動してください。"),TEXT(""),MB_OK | MB_ICONERROR);
+#else
+		MessageBox(hWndMain, TEXT("Failed to make folders for backup."), TEXT(""), MB_OK | MB_ICONERROR);
+#endif
+		ExitProcess( 0 );
+		return;
+	}
+
+	int i;
+	// 無限ループは怖いので縛っておく
+	for (i = 0; i < 4096; i++){
+		TCHAR txtpath[MAX_PATH*2];
+		TCHAR txtpath_n[MAX_PATH*2];
+		TCHAR hsppath[MAX_PATH*2];
+		TCHAR hsppath_n[MAX_PATH*2];
+		TCHAR number[256];
+		_stprintf_s(number, 256, TEXT("%d"), i);
+		_tcscpy_s(txtpath, MAX_PATH*2, backuppath);
+		_tcscpy_s(txtpath_n, MAX_PATH*2, backupcopyfolder);
+		_tcscpy_s(hsppath, MAX_PATH*2, backuppath);
+		_tcscpy_s(hsppath_n, MAX_PATH*2, backupcopyfolder);
+		_tcscat_s(txtpath, MAX_PATH*2, number);
+		_tcscat_s(txtpath, MAX_PATH*2, TEXT(".txt"));
+		_tcscat_s(txtpath_n, MAX_PATH*2, number);
+		_tcscat_s(txtpath_n, MAX_PATH*2, TEXT(".txt"));
+		_tcscat_s(hsppath, MAX_PATH*2, number);
+		_tcscat_s(hsppath, MAX_PATH*2, TEXT(".hsp"));
+		_tcscat_s(hsppath_n, MAX_PATH*2, number);
+		_tcscat_s(hsppath_n, MAX_PATH*2, TEXT(".hsp"));
+
+		if (!PathFileExists(txtpath))
+			break;
+		if (PathFileExists(txtpath))
+			CopyFile(txtpath, txtpath_n, FALSE);
+		if (PathFileExists(hsppath))
+			CopyFile(hsppath, hsppath_n, FALSE);
+
+	}
+}
+
+int ReadFileBuffer(LPCTSTR filepath, LPTSTR *buf){
+	/*
+	FILE *fp;
+	fpos_t fsize;
+	// オープン
+	fp = fopen(filepath, "rb");
+	if (fp == NULL)
+		return -1;
+	// ファイルサイズ
+	fseek(fp, 0, SEEK_END); 
+	fgetpos(fp, &fsize);
+	fseek(fp, 0, SEEK_SET);
+	*buf = (char *)calloc(fsize*2+2, sizeof(char));
+	char *tmp = (char *)calloc(fsize*2+2, sizeof(char));
+	if (fsize > 0){
+		while (fgets(tmp, fsize*2+1, fp) != NULL){
+			strcat(*buf, tmp);
+		}
+	}
+
+	//fgets(*buf, fsize*2+1, fp);
+	free(tmp);
+	fclose(fp);
+	return (int)fsize;
+	*/
+	HANDLE fp;
+	int fsize;
+	fp = CreateFile(filepath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (fp == NULL)
+		return -1;
+	// ファイルサイズ
+	fsize = GetFileSize(fp, NULL);
+	*buf = (LPTSTR)calloc(fsize*2+2, sizeof(TCHAR));
+	//char *tmp = (char *)calloc(fsize*2+2, sizeof(char));
+	if (fsize > 0){
+		DWORD NumberOfBytesRead = 0;
+		ReadFile(fp, *buf, fsize, &NumberOfBytesRead, NULL);
+	}
+	//free(tmp);
+	CloseHandle(fp);
+	return fsize;
+}
+
+void CloseFileBuffer(LPTSTR buf){
+	if (buf != NULL){
+		free(buf);
+		buf = NULL;
+	}
+
+}
+
+int ExistBackupFile(LPTSTR backuppath){
+	int res = 0;
+	TCHAR txtpath[MAX_PATH*2];
+	TCHAR number[256];
+	_stprintf_s(number, 256, TEXT("%d"), 0);
+	_tcscpy_s(txtpath, MAX_PATH*2, backuppath);;
+	_tcscat_s(txtpath, MAX_PATH*2, number);
+	_tcscat_s(txtpath, MAX_PATH*2, TEXT(".txt"));
+	if (!PathFileExists(txtpath)){
+		return -1;
+	}
+	return res;
+}

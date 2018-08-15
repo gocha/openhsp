@@ -222,7 +222,7 @@ CFootyDoc::RedrawType CFootyDoc::DeleteSelected(CUndoBuffer *pUndoBuffer)
 	{
 		pStartLine->m_strLineData.erase(
 			pSelStart->GetPosition(),pSelEnd->GetPosition()-pSelStart->GetPosition());
-		SetLineInfo(pStartLine);
+		SetLineInfo(pStartLine, false/*改行を含むか by Tetr@pod*/);
 	}
 	else
 	{
@@ -237,7 +237,7 @@ CFootyDoc::RedrawType CFootyDoc::DeleteSelected(CUndoBuffer *pUndoBuffer)
 		DeleteLine(pStartLine,pEndLine);
 
 		// データをフラッシュする
-		SetLineInfo(pStartLineBack,pEndLine);
+		SetLineInfo(pStartLineBack,pEndLine, true/*改行を含むか by Tetr@pod*/);
 	}
 
 	// 選択を解除する

@@ -6,6 +6,10 @@
 #include <tchar.h>
 #include <commdlg.h>
 #include "Footy2.h"
+#include <tchar.h>
+// PathFileExistsで使用
+#include "shlwapi.h"
+#pragma comment(lib, "shlwapi.lib")
 
 static LOGFONT editfont ;
 static LOGFONT tabfont ;
@@ -15,6 +19,10 @@ static HFONT   hFont ;
 static HFONT   hTabFont ;
 extern int activeFootyID;
 extern HWND hwndTab;
+extern int forcefont;
+extern int speedDraw;
+extern BOOL bDrawUnderline;
+extern TCHAR BgImagePath[_MAX_PATH+1];// 背景画像のパス by inovia
 
 void PopFontSetELG ( LOGFONT lf ) { editfont =lf; }
 LOGFONT PopFontGetELG ( void ) { return editfont; }
@@ -50,6 +58,7 @@ DWORD PopFontChooseColor(HWND hwnd, COLORREF crInitColor)
 
 LONG PopFontChooseEditFont (HWND hwnd)
      {
+		
 	 BOOL res;
      CHOOSEFONT cf;
 
@@ -58,8 +67,15 @@ LONG PopFontChooseEditFont (HWND hwnd)
      cf.hDC              = NULL ;
      cf.lpLogFont        = &tempeditfont ;
      cf.iPointSize       = 0 ;
-     cf.Flags            = CF_INITTOLOGFONTSTRUCT | CF_SCREENFONTS
+
+	 	// Ctrlキーが押されている場合は一時的に固定フォントのみを解除
+		if (GetAsyncKeyState(VK_CONTROL)){
+		 cf.Flags            = CF_INITTOLOGFONTSTRUCT | CF_SCREENFONTS;
+		}else{
+		 cf.Flags            = CF_INITTOLOGFONTSTRUCT | CF_SCREENFONTS
 												  | CF_FIXEDPITCHONLY;
+		}
+
      cf.rgbColors        = NULL ;
      cf.lCustData        = 0L ;
      cf.lpfnHook         = NULL ;
@@ -116,14 +132,38 @@ void PopFontSetEditFont()
 {
 	HDC hDC = CreateCompatibleDC(NULL);
 	int FontSize = (MulDiv(abs(editfont.lfHeight), 720, GetDeviceCaps(hDC, LOGPIXELSY)) + 5) / 10;
-	for(int i = 0;; i++) {
-		static int const charsets[] = { FFM_ANSI_CHARSET, FFM_SHIFTJIS_CHARSET };
-		for (int j = 0; j < 2; j++) {
-			if ( Footy2SetFontFace(i, charsets[j], editfont.lfFaceName) == FOOTY2ERR_NOID ) { goto BREAK; }
-		}
+	// 高速再描画の設定
+	for(int i = 0; Footy2SetSpeedDraw(i, speedDraw) != FOOTY2ERR_NOID; i++);
+
+	// フォント強制設定
+	for(int i = 0; Footy2SetForceFont(i, forcefont) != FOOTY2ERR_NOID; i++);
+
+	for(int i = 0; Footy2SetFontFace(i, FFM_ANSI_CHARSET, editfont.lfFaceName) != FOOTY2ERR_NOID; i++) {
 		Footy2SetFontSize(i, FontSize);
 	}
-BREAK:
+	// 日本語に対応できるように追加
+	for(int i = 0; Footy2SetFontFace(i, FFM_SHIFTJIS_CHARSET, editfont.lfFaceName) != FOOTY2ERR_NOID; i++)
+
+	// 非フォーカス時もアンダーバー表示
+	for(int i = 0; Footy2SetUnderlineDraw(i, (bool)bDrawUnderline) != FOOTY2ERR_NOID; i++);
+
+	// 背景画像読み込み by inovia
+	TCHAR imgpath[_MAX_PATH * 2 + 1] = {0};
+	if (BgImagePath[0] != 0) {
+		if (0 == _tcsncmp( BgImagePath, TEXT("./"), 2 )){
+			GetModuleFileName(0, imgpath, _MAX_PATH);
+			PathRemoveFileSpec(imgpath);	// ディレクトリのみにする
+		}
+		_tcscat(imgpath, BgImagePath);
+		for(int i = 0; Footy2SetBackgroundImage(i, imgpath, false) != FOOTY2ERR_NOID; i++);
+	}
+	else {
+		GetModuleFileName(0, imgpath, _MAX_PATH);
+		PathRemoveFileSpec(imgpath);	// ディレクトリのみにする
+		_tcscat(imgpath, TEXT("\\hsptv\\editor.png"));
+		for (int i = 0; Footy2SetBackgroundImage(i, imgpath, false) != FOOTY2ERR_NOID; i++);
+	}
+
 	DeleteDC(hDC);
 }
 

@@ -43,6 +43,8 @@ extern TCHAR     szTitleName[_MAX_FNAME + _MAX_EXT] ;
 extern TCHAR     szStartDir[_MAX_PATH];
 static HMENU    hMenu = NULL;
 
+extern int      nowViewMode;// by Tetr@pod
+
 // タブを作成
 // Create a tab
 //
@@ -70,8 +72,9 @@ void CreateTab(int nTabNumber, LPCTSTR szNewTitleName, LPCTSTR szNewFileName, LP
 	// Create a Footy window
 	GetClientRect(hwndTab, &rect);
 	TabCtrl_AdjustRect(hwndTab, FALSE, &rect);
-	dx = max(rect.right-rect.left, 1);
-	dy = max(rect.bottom-rect.top, 1);
+	dx = max(rect.right-rect.left, 512);
+	dy = max(rect.bottom-rect.top, 512);
+	// dx, dy を小さいサイズにすると、分割ビュー時にバグる
 	FootyID = Footy2Create(hwndTab, rect.left, rect.top, dx, dy, VIEWMODE_INVISIBLE);
 	if( FootyID < 0 ) {
 		DebugBreak();	// 2008-02-17 Shark++ 取り敢えずここで落とす
@@ -142,7 +145,8 @@ void CreateTab(int nTabNumber, LPCTSTR szNewTitleName, LPCTSTR szNewFileName, LP
 	mii.cbSize     = sizeof(MENUITEMINFO);
 	mii.fMask      = MIIM_ID | MIIM_TYPE;
 	mii.fType      = MFT_RADIOCHECK | MFT_STRING;
-	mii.wID        = IDM_ACTIVATETAB + nTabNumber;
+	// mii.wID        = IDM_ACTIVATETAB + nTabNumber;
+	mii.wID        = IDM_SEPARATEWINDOWQ + nTabNumber;
 	mii.dwTypeData = (LPTSTR)(szNewTitleName[0] == TEXT('\0') ? TABUNTITLED : szNewTitleName);
 	InsertMenuItem(hMenu, POS_TABBASE + nTabNumber, TRUE, &mii);
 
@@ -256,7 +260,9 @@ void SetTabInfo(int nTabNumber, LPCTSTR szTitleName, LPCTSTR szFileName, LPCTSTR
 
 		szMenuText = (LPTSTR )malloc((max(lstrlen(lpTabInfo->TitleName), lstrlen(TABUNTITLED)) + 3)*sizeof(TCHAR));
 		lstrcpy(szMenuText, lpTabInfo->TitleName[0] == TEXT('\0') ? TABUNTITLED : lpTabInfo->TitleName);
+
 		if(lpTabInfo->NeedSave) lstrcat(szMenuText, TEXT(" *"));
+
 		mii.cbSize = sizeof(MENUITEMINFO);
 		mii.fMask  = MIIM_TYPE;
 		mii.fType  = MFT_STRING | MFT_RADIOCHECK;
@@ -333,7 +339,9 @@ void ActivateTab(int nTabNumber1, int nTabNumber2)
 		GetClientRect(hwndTab, &rect);
 		TabCtrl_AdjustRect(hwndTab, FALSE, &rect);
 		Footy2Move(activeFootyID, rect.left, rect.top, rect.right-rect.left, rect.bottom-rect.top);
-		Footy2ChangeView(activeFootyID, VIEWMODE_NORMAL);
+		// Footy2ChangeView(activeFootyID, VIEWMODE_NORMAL);
+		Footy2ChangeView(activeFootyID, nowViewMode);// by Tetr@pod
+		//Footy2ChangeView(activeFootyID, VIEWMODE_QUAD);
 		Footy2SetFocus(activeFootyID, 0);
 		poppad_setsb_current(activeFootyID);
 		Footy2Refresh(activeFootyID);

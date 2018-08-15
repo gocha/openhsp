@@ -11,6 +11,7 @@
 #include "classify.h"
 #include "support.h"
 #include "exttool.h"
+#include "CustomConfig.h"
 
 // Global variables
 static TCHAR szIniFileName[_MAX_PATH + 1];
@@ -62,9 +63,28 @@ extern FileList filelist;
 extern int      ColumnWidth[2];
 extern bool	    bUseIni;
 extern BOOL     bAutoIndent;
+extern int      forcefont;			// フォント強制 by inovia
+extern BOOL     bCustomColor;		// カスタムカラーを使うか？ by inovia
+extern int		autobackup;			// 自動バックアップ by inovia
+extern BOOL		BackupNoDelete;		// 復旧時自動削除しない by inovia
+extern BOOL		NotifyBackup;		// バックアップ通知
+extern int		speedDraw;			// 高速描画
+extern BOOL     bDrawUnderline;		// 非フォーカス時もアンダーライン描画
+extern BOOL     UseNewReplace;		// 高速な置換 by Tetr@pod
+extern BOOL     CustomMatchCase;	// カスタム色分けの大文字小文字区別 by Tetr@pod
+extern BOOL     UseClickableLabel;	// リンクラベルを使用する by Tetr@pod
+extern BOOL     UseSearchFunction;	// ユーザー定義命令・関数の色分け by Tetr@pod
+
+extern BOOL     ChangeColor_func;     // #func、#cfunc、#cmd を色分けしない
+extern BOOL     ChangeColor_define;   // #define、#define ctype を色分けしない
+
+extern TCHAR		BgImagePath[_MAX_PATH+1];// 背景画像のパス by inovia
+
 
 static int      hsed_ver;
 static int      hsed_private_ver;
+
+extern HWND          hWndMain;
 
 // Registry I/O routines
 static int reg_getkey( HKEY, LPTSTR, int * );
@@ -124,6 +144,25 @@ void LoadConfig()
 		ini_load();
 	else
 		reg_load();
+
+	// カスタム設定読み込み(ini) by inovia
+	forcefont = GetINIForceFont();
+	bCustomColor = GetINICustomColor();
+	autobackup = GetINICustomInt(TEXT("AutoBackup"));
+	BackupNoDelete = GetINICustomBOOL(TEXT("NoBackupDelete"));
+	NotifyBackup = GetINICustomBOOL(TEXT("NotifyBackup"));
+	bDrawUnderline = GetINICustomBOOL(TEXT("DrawUnderline"));
+	speedDraw = GetINICustomInt(TEXT("SpeedDraw"));
+	UseNewReplace = GetINICustomBOOL(TEXT("UseNewReplace"));// by Tetr@pod
+	CustomMatchCase = GetINICustomBOOL(TEXT("CustomMatchCase"));// by Tetr@pod
+	UseClickableLabel = GetINICustomBOOL(TEXT("UseClickableLabel"));// by Tetr@pod
+	UseSearchFunction = GetINICustomBOOL(TEXT("DrawUserFunction"));// by Tetr@pod
+
+	ChangeColor_func = GetINICustomBOOL(TEXT("ChangeColor_func"));// by Tetr@pod
+	ChangeColor_define = GetINICustomBOOL(TEXT("ChangeColor_define"));// by Tetr@pod
+
+	GetINICustomString(TEXT("BgImagePath"), (LPTSTR)&BgImagePath, _MAX_PATH);// by inovia
+
 	return;
 }
 
@@ -140,6 +179,24 @@ void SaveConfig()
 	}
 	else
 		reg_save();
+
+	// カスタム設定保存(ini) by inovia
+	SetINIForceFont(forcefont);
+	SetINICustomColor(bCustomColor);
+	SetINICustomInt(autobackup, TEXT("AutoBackup"));
+	SetINICustomBOOL(BackupNoDelete, TEXT("NoBackupDelete"));
+	SetINICustomBOOL(NotifyBackup, TEXT("NotifyBackup"));
+	SetINICustomBOOL(bDrawUnderline, TEXT("DrawUnderline"));
+	SetINICustomInt(speedDraw, TEXT("SpeedDraw"));
+	SetINICustomBOOL(UseNewReplace, TEXT("UseNewReplace"));// by Tetr@pod
+	SetINICustomBOOL(CustomMatchCase, TEXT("CustomMatchCase"));// by Tetr@pod
+	SetINICustomBOOL(UseClickableLabel, TEXT("UseClickableLabel"));// by Tetr@pod
+	SetINICustomBOOL(UseSearchFunction, TEXT("DrawUserFunction"));// by Tetr@pod
+
+	SetINICustomBOOL(ChangeColor_func, TEXT("ChangeColor_func"));// by Tetr@pod
+	SetINICustomBOOL(ChangeColor_define, TEXT("ChangeColor_define"));// by Tetr@pod
+	SetINICustomString(TEXT("BgImagePath"), (LPTSTR)&BgImagePath);	// by inovia
+
 	return;
 }
 
@@ -207,27 +264,43 @@ static DWORD reg_getsize( HKEY hKey, LPTSTR readkey )
 void DefaultColor(MYCOLOR *dest)
 {
 	ZeroMemory(dest, sizeof(MYCOLOR));
-	dest->Character.Default.Conf       = DEFCOLOR_FONT;
-	dest->Character.String.Conf        = DEFCOLOR_STRING;
-	dest->Character.Function.Conf      = DEFCOLOR_FUNC;
-	dest->Character.Preprocessor.Conf  = DEFCOLOR_PREPROCESSOR;
-	dest->Character.Macro.Conf         = DEFCOLOR_MACRO;
-	dest->Character.Comment.Conf       = DEFCOLOR_COMMENT;
-	dest->Character.Label.Conf         = DEFCOLOR_LABEL;
-	dest->NonCharacter.HalfSpace.Conf  = DEFCOLOR_HALF_SPACE;
-	dest->NonCharacter.FullSpace.Conf  = DEFCOLOR_FULL_SPACE;
-	dest->NonCharacter.Tab.Conf        = DEFCOLOR_TAB;
-	dest->NonCharacter.NewLine.Conf    = DEFCOLOR_NEWLINE;
-	dest->NonCharacter.EndOfFile.Conf  = DEFCOLOR_EOF;
-	dest->Edit.Background.Conf         = DEFCOLOR_BACKGROUND;
-	dest->Edit.CaretUnderLine.Conf     = DEFCOLOR_CARET_UNDERLINE;
-	dest->Edit.BoundaryLineNumber.Conf = DEFCOLOR_BOUNDARY_LINENUM;
-	dest->LineNumber.Number.Conf       = DEFCOLOR_LINENUM;
-	dest->LineNumber.CaretLine.Conf    = DEFCOLOR_CARET_LINE;
-	dest->Ruler.Number.Conf            = DEFCOLOR_RULER_FONT;
-	dest->Ruler.Background.Conf        = DEFCOLOR_RULER_BACKGROUND;
-	dest->Ruler.Division.Conf          = DEFCOLOR_RULER_DIVISION;
-	dest->Ruler.Caret.Conf             = DEFCOLOR_RULER_CARET;
+	dest->Character.Default.Conf          = DEFCOLOR_FONT;
+	dest->Character.String.Conf           = DEFCOLOR_STRING;
+	dest->Character.Function.Conf         = DEFCOLOR_FUNC;
+	dest->Character.Preprocessor.Conf     = DEFCOLOR_PREPROCESSOR;
+	dest->Character.Macro.Conf            = DEFCOLOR_MACRO;
+	dest->Character.Comment.Conf          = DEFCOLOR_COMMENT;
+	dest->Character.Label.Conf            = DEFCOLOR_LABEL;
+	dest->NonCharacter.HalfSpace.Conf     = DEFCOLOR_HALF_SPACE;
+	dest->NonCharacter.FullSpace.Conf     = DEFCOLOR_FULL_SPACE;
+	dest->NonCharacter.Tab.Conf           = DEFCOLOR_TAB;
+	dest->NonCharacter.NewLine.Conf       = DEFCOLOR_NEWLINE;
+	dest->NonCharacter.EndOfFile.Conf     = DEFCOLOR_EOF;
+	dest->Edit.Background.Conf            = DEFCOLOR_BACKGROUND;
+	dest->Edit.CaretUnderLine.Conf        = DEFCOLOR_CARET_UNDERLINE;
+	dest->Edit.BoundaryLineNumber.Conf    = DEFCOLOR_BOUNDARY_LINENUM;
+	dest->LineNumber.Number.Conf          = DEFCOLOR_LINENUM;
+	dest->LineNumber.CaretLine.Conf       = DEFCOLOR_CARET_LINE;
+	dest->Ruler.Number.Conf               = DEFCOLOR_RULER_FONT;
+	dest->Ruler.Background.Conf           = DEFCOLOR_RULER_BACKGROUND;
+	dest->Ruler.Division.Conf             = DEFCOLOR_RULER_DIVISION;
+	dest->Ruler.Caret.Conf                = DEFCOLOR_RULER_CARET;
+
+	// by Tetr@pod
+	dest->Clickable.URL.Conf              = DEFCOLOR_CURL;
+	dest->Clickable.URLUnderLine.Conf     = DEFCOLOR_CURL_UNDERLINE;
+	dest->Clickable.Mail.Conf             = DEFCOLOR_CMAIL;
+	dest->Clickable.MailUnderLine.Conf    = DEFCOLOR_CMAIL_UNDERLINE;
+	dest->Clickable.Label.Conf            = DEFCOLOR_CLABEL;
+	dest->Clickable.LabelUnderLine.Conf   = DEFCOLOR_CLABEL_UNDERLINE;
+	dest->UserFunction.UserFunction1.Conf = DEFCOLOR_USERFUNC_DEFFUNC;
+	dest->UserFunction.UserFunction2.Conf = DEFCOLOR_USERFUNC_MODINIT;
+	dest->UserFunction.UserFunction3.Conf = DEFCOLOR_USERFUNC_MODFUNC;
+	dest->UserFunction.UserFunction4.Conf = DEFCOLOR_USERFUNC_FUNC;
+	dest->UserFunction.UserFunction5.Conf = DEFCOLOR_USERFUNC_CMD;
+	dest->UserFunction.UserFunction6.Conf = DEFCOLOR_USERFUNC_COMFUNC;
+	dest->UserFunction.UserFunction7.Conf = DEFCOLOR_USERFUNC_DEFINE;
+	dest->UserFunction.UserFunction8.Conf = DEFCOLOR_USERFUNC_DEFINEC;
 }
 
 void DefaultFont(LOGFONT *editfont, LOGFONT *tabfont)
@@ -416,6 +489,23 @@ static void reg_save( void )
 	reg_setkey( hKey, TEXT("RulerBackGround"), color.Ruler.Background.Conf );
 	reg_setkey( hKey, TEXT("RulerDivision"), color.Ruler.Division.Conf );
 	reg_setkey( hKey, TEXT("RulerCaret"), color.Ruler.Caret.Conf );
+
+	// by Tetr@pod
+	reg_setkey( hKey, TEXT("URL"), color.Clickable.URL.Conf );
+	reg_setkey( hKey, TEXT("URLUnderLine"), color.Clickable.URLUnderLine.Conf );
+	reg_setkey( hKey, TEXT("Mail"), color.Clickable.Mail.Conf );
+	reg_setkey( hKey, TEXT("MailUnderLine"), color.Clickable.MailUnderLine.Conf );
+	reg_setkey( hKey, TEXT("Label"), color.Clickable.Label.Conf );
+	reg_setkey( hKey, TEXT("LabelUnderLine"), color.Clickable.LabelUnderLine.Conf );
+	reg_setkey( hKey, TEXT("UserFunction1"), color.UserFunction.UserFunction1.Conf );
+	reg_setkey( hKey, TEXT("UserFunction2"), color.UserFunction.UserFunction2.Conf );
+	reg_setkey( hKey, TEXT("UserFunction3"), color.UserFunction.UserFunction3.Conf );
+	reg_setkey( hKey, TEXT("UserFunction4"), color.UserFunction.UserFunction4.Conf );
+	reg_setkey( hKey, TEXT("UserFunction5"), color.UserFunction.UserFunction5.Conf );
+	reg_setkey( hKey, TEXT("UserFunction6"), color.UserFunction.UserFunction6.Conf );
+	reg_setkey( hKey, TEXT("UserFunction7"), color.UserFunction.UserFunction7.Conf );
+	reg_setkey( hKey, TEXT("UserFunction8"), color.UserFunction.UserFunction8.Conf );
+	
 	RegCloseKey(hKey);
 
 	RegCreateKeyEx(HKEY_CURRENT_USER, TEXT("Software\\OnionSoftware\\hsed") REG_SUFFIX TEXT("\\UserColor"), 0, TEXT(""), 
@@ -441,6 +531,23 @@ static void reg_save( void )
 	reg_setkey( hKey, TEXT("RulerBackGround"), color.Ruler.Background.Combo );
 	reg_setkey( hKey, TEXT("RulerDivision"), color.Ruler.Division.Combo );
 	reg_setkey( hKey, TEXT("RulerCaret"), color.Ruler.Caret.Combo );
+
+	// by Tetr@pod
+	reg_setkey( hKey, TEXT("URL"), color.Clickable.URL.Combo );
+	reg_setkey( hKey, TEXT("URLUnderLine"), color.Clickable.URLUnderLine.Combo );
+	reg_setkey( hKey, TEXT("Mail"), color.Clickable.Mail.Combo );
+	reg_setkey( hKey, TEXT("MailUnderLine"), color.Clickable.MailUnderLine.Combo );
+	reg_setkey( hKey, TEXT("Label"), color.Clickable.Label.Combo );
+	reg_setkey( hKey, TEXT("LabelUnderLine"), color.Clickable.LabelUnderLine.Combo );
+	reg_setkey( hKey, TEXT("UserFunction1"), color.UserFunction.UserFunction1.Combo );
+	reg_setkey( hKey, TEXT("UserFunction2"), color.UserFunction.UserFunction2.Combo );
+	reg_setkey( hKey, TEXT("UserFunction3"), color.UserFunction.UserFunction3.Combo );
+	reg_setkey( hKey, TEXT("UserFunction4"), color.UserFunction.UserFunction4.Combo );
+	reg_setkey( hKey, TEXT("UserFunction5"), color.UserFunction.UserFunction5.Combo );
+	reg_setkey( hKey, TEXT("UserFunction6"), color.UserFunction.UserFunction6.Combo );
+	reg_setkey( hKey, TEXT("UserFunction7"), color.UserFunction.UserFunction7.Combo );
+	reg_setkey( hKey, TEXT("UserFunction8"), color.UserFunction.UserFunction8.Combo );
+
 	RegCloseKey(hKey);
 
 	RegCreateKeyEx(HKEY_CURRENT_USER, TEXT("Software\\OnionSoftware\\hsed") REG_SUFFIX TEXT("\\ExtTools"), 0, TEXT(""),
@@ -589,6 +696,22 @@ static void reg_load( void )
 			reg_getkey( hKey, TEXT("RulerDivision"), (int *)&(color.Ruler.Division.Conf) );
 			reg_getkey( hKey, TEXT("RulerCaret"), (int *)&(color.Ruler.Caret.Conf) );
 
+			// by Tetr@pod
+			reg_getkey( hKey, TEXT("URL"), (int *)&(color.Clickable.URL.Conf) );
+			reg_getkey( hKey, TEXT("URLUnderLine"), (int *)&(color.Clickable.URLUnderLine.Conf) );
+			reg_getkey( hKey, TEXT("Mail"), (int *)&(color.Clickable.Mail.Conf) );
+			reg_getkey( hKey, TEXT("MailUnderLine"), (int *)&(color.Clickable.MailUnderLine.Conf) );
+			reg_getkey( hKey, TEXT("Label"), (int *)&(color.Clickable.Label.Conf) );
+			reg_getkey( hKey, TEXT("LabelUnderLine"), (int *)&(color.Clickable.LabelUnderLine.Conf) );
+			reg_getkey( hKey, TEXT("UserFunction1"), (int *)&(color.UserFunction.UserFunction1.Conf) );
+			reg_getkey( hKey, TEXT("UserFunction2"), (int *)&(color.UserFunction.UserFunction2.Conf) );
+			reg_getkey( hKey, TEXT("UserFunction3"), (int *)&(color.UserFunction.UserFunction3.Conf) );
+			reg_getkey( hKey, TEXT("UserFunction4"), (int *)&(color.UserFunction.UserFunction4.Conf) );
+			reg_getkey( hKey, TEXT("UserFunction5"), (int *)&(color.UserFunction.UserFunction5.Conf) );
+			reg_getkey( hKey, TEXT("UserFunction6"), (int *)&(color.UserFunction.UserFunction6.Conf) );
+			reg_getkey( hKey, TEXT("UserFunction7"), (int *)&(color.UserFunction.UserFunction7.Conf) );
+			reg_getkey( hKey, TEXT("UserFunction8"), (int *)&(color.UserFunction.UserFunction8.Conf) );
+
 			RegCloseKey(hKey);
 	}
 
@@ -615,6 +738,22 @@ static void reg_load( void )
 			reg_getkey( hKey, TEXT("RulerBackGround"), (int *)&(color.Ruler.Background.Combo) );
 			reg_getkey( hKey, TEXT("RulerDivision"), (int *)&(color.Ruler.Division.Combo) );
 			reg_getkey( hKey, TEXT("RulerCaret"), (int *)&(color.Ruler.Caret.Combo) );
+		
+			// by Tetr@pod
+			reg_getkey( hKey, TEXT("URL"), (int *)&(color.Clickable.URL.Combo) );
+			reg_getkey( hKey, TEXT("URLUnderLine"), (int *)&(color.Clickable.URLUnderLine.Combo) );
+			reg_getkey( hKey, TEXT("Mail"), (int *)&(color.Clickable.Mail.Combo) );
+			reg_getkey( hKey, TEXT("MailUnderLine"), (int *)&(color.Clickable.MailUnderLine.Combo) );
+			reg_getkey( hKey, TEXT("Label"), (int *)&(color.Clickable.Label.Combo) );
+			reg_getkey( hKey, TEXT("LabelUnderLine"), (int *)&(color.Clickable.LabelUnderLine.Combo) );
+			reg_getkey( hKey, TEXT("UserFunction1"), (int *)&(color.UserFunction.UserFunction1.Combo) );
+			reg_getkey( hKey, TEXT("UserFunction2"), (int *)&(color.UserFunction.UserFunction2.Combo) );
+			reg_getkey( hKey, TEXT("UserFunction3"), (int *)&(color.UserFunction.UserFunction3.Combo) );
+			reg_getkey( hKey, TEXT("UserFunction4"), (int *)&(color.UserFunction.UserFunction4.Combo) );
+			reg_getkey( hKey, TEXT("UserFunction5"), (int *)&(color.UserFunction.UserFunction5.Combo) );
+			reg_getkey( hKey, TEXT("UserFunction6"), (int *)&(color.UserFunction.UserFunction6.Combo) );
+			reg_getkey( hKey, TEXT("UserFunction7"), (int *)&(color.UserFunction.UserFunction7.Combo) );
+			reg_getkey( hKey, TEXT("UserFunction8"), (int *)&(color.UserFunction.UserFunction8.Combo) );
 
 			RegCloseKey(hKey);
 	}
@@ -869,6 +1008,21 @@ static void ini_save( void )
 	ini_setkey( filename, TEXT("Color"), TEXT("RulerBackGround"), color.Ruler.Background.Conf );
 	ini_setkey( filename, TEXT("Color"), TEXT("RulerDivision"), color.Ruler.Division.Conf );
 	ini_setkey( filename, TEXT("Color"), TEXT("RulerCaret"), color.Ruler.Caret.Conf );
+	// by Tetr@pod
+	ini_setkey( filename, TEXT("Color"), TEXT("URL"), color.Clickable.URL.Conf );
+	ini_setkey( filename, TEXT("Color"), TEXT("URLUnderLine"), color.Clickable.URLUnderLine.Conf );
+	ini_setkey( filename, TEXT("Color"), TEXT("Mail"), color.Clickable.Mail.Conf );
+	ini_setkey( filename, TEXT("Color"), TEXT("MailUnderLine"), color.Clickable.MailUnderLine.Conf );
+	ini_setkey( filename, TEXT("Color"), TEXT("Label"), color.Clickable.Label.Conf );
+	ini_setkey( filename, TEXT("Color"), TEXT("LabelUnderLine"), color.Clickable.LabelUnderLine.Conf );
+	ini_setkey( filename, TEXT("Color"), TEXT("UserFunction1"), color.UserFunction.UserFunction1.Conf );
+	ini_setkey( filename, TEXT("Color"), TEXT("UserFunction2"), color.UserFunction.UserFunction2.Conf );
+	ini_setkey( filename, TEXT("Color"), TEXT("UserFunction3"), color.UserFunction.UserFunction3.Conf );
+	ini_setkey( filename, TEXT("Color"), TEXT("UserFunction4"), color.UserFunction.UserFunction4.Conf );
+	ini_setkey( filename, TEXT("Color"), TEXT("UserFunction5"), color.UserFunction.UserFunction5.Conf );
+	ini_setkey( filename, TEXT("Color"), TEXT("UserFunction6"), color.UserFunction.UserFunction6.Conf );
+	ini_setkey( filename, TEXT("Color"), TEXT("UserFunction7"), color.UserFunction.UserFunction7.Conf );
+	ini_setkey( filename, TEXT("Color"), TEXT("UserFunction8"), color.UserFunction.UserFunction8.Conf );
 
 	ini_setkey( filename, TEXT("UserColor"), TEXT("Default"), color.Character.Default.Combo );
 	ini_setkey( filename, TEXT("UserColor"), TEXT("String"), color.Character.String.Combo );
@@ -891,6 +1045,23 @@ static void ini_save( void )
 	ini_setkey( filename, TEXT("UserColor"), TEXT("RulerBackGround"), color.Ruler.Background.Combo );
 	ini_setkey( filename, TEXT("UserColor"), TEXT("RulerDivision"), color.Ruler.Division.Combo );
 	ini_setkey( filename, TEXT("UserColor"), TEXT("RulerCaret"), color.Ruler.Caret.Combo );
+
+	// by Tetr@pod
+	ini_setkey( filename, TEXT("UserColor"), TEXT("URL"), color.Clickable.URL.Combo );
+	ini_setkey( filename, TEXT("UserColor"), TEXT("URLUnderLine"), color.Clickable.URLUnderLine.Combo );
+	ini_setkey( filename, TEXT("UserColor"), TEXT("Mail"), color.Clickable.Mail.Combo );
+	ini_setkey( filename, TEXT("UserColor"), TEXT("MailUnderLine"), color.Clickable.MailUnderLine.Combo );
+	ini_setkey( filename, TEXT("UserColor"), TEXT("Label"), color.Clickable.Label.Combo );
+	ini_setkey( filename, TEXT("UserColor"), TEXT("LabelUnderLine"), color.Clickable.LabelUnderLine.Combo );
+	ini_setkey( filename, TEXT("UserColor"), TEXT("UserFunction1"), color.UserFunction.UserFunction1.Combo );
+	ini_setkey( filename, TEXT("UserColor"), TEXT("UserFunction2"), color.UserFunction.UserFunction2.Combo );
+	ini_setkey( filename, TEXT("UserColor"), TEXT("UserFunction3"), color.UserFunction.UserFunction3.Combo );
+	ini_setkey( filename, TEXT("UserColor"), TEXT("UserFunction4"), color.UserFunction.UserFunction4.Combo );
+	ini_setkey( filename, TEXT("UserColor"), TEXT("UserFunction5"), color.UserFunction.UserFunction5.Combo );
+	ini_setkey( filename, TEXT("UserColor"), TEXT("UserFunction6"), color.UserFunction.UserFunction6.Combo );
+	ini_setkey( filename, TEXT("UserColor"), TEXT("UserFunction7"), color.UserFunction.UserFunction7.Combo );
+	ini_setkey( filename, TEXT("UserColor"), TEXT("UserFunction8"), color.UserFunction.UserFunction8.Combo );
+
 
 	nSize = GetExtToolSize();
 	ini_setkey( filename, TEXT("ExtTools"), TEXT("numoftools"), nSize );
@@ -1014,6 +1185,22 @@ static void ini_load()
 		ini_getkey( filename, TEXT("Color"), TEXT("RulerDivision"), (int *)&(color.Ruler.Division.Conf) );
 		ini_getkey( filename, TEXT("Color"), TEXT("RulerCaret"), (int *)&(color.Ruler.Caret.Conf) );
 
+		// by Tetr@pod
+		ini_getkey( filename, TEXT("Color"), TEXT("URL"), (int *)&(color.Clickable.URL.Conf) );
+		ini_getkey( filename, TEXT("Color"), TEXT("URLUnderLine"), (int *)&(color.Clickable.URLUnderLine.Conf) );
+		ini_getkey( filename, TEXT("Color"), TEXT("Mail"), (int *)&(color.Clickable.Mail.Conf) );
+		ini_getkey( filename, TEXT("Color"), TEXT("MailUnderLine"), (int *)&(color.Clickable.MailUnderLine.Conf) );
+		ini_getkey( filename, TEXT("Color"), TEXT("Label"), (int *)&(color.Clickable.Label.Conf) );
+		ini_getkey( filename, TEXT("Color"), TEXT("LabelUnderLine"), (int *)&(color.Clickable.LabelUnderLine.Conf) );
+		ini_getkey( filename, TEXT("Color"), TEXT("UserFunction1"), (int *)&(color.UserFunction.UserFunction1.Conf) );
+		ini_getkey( filename, TEXT("Color"), TEXT("UserFunction2"), (int *)&(color.UserFunction.UserFunction2.Conf) );
+		ini_getkey( filename, TEXT("Color"), TEXT("UserFunction3"), (int *)&(color.UserFunction.UserFunction3.Conf) );
+		ini_getkey( filename, TEXT("Color"), TEXT("UserFunction4"), (int *)&(color.UserFunction.UserFunction4.Conf) );
+		ini_getkey( filename, TEXT("Color"), TEXT("UserFunction5"), (int *)&(color.UserFunction.UserFunction5.Conf) );
+		ini_getkey( filename, TEXT("Color"), TEXT("UserFunction6"), (int *)&(color.UserFunction.UserFunction6.Conf) );
+		ini_getkey( filename, TEXT("Color"), TEXT("UserFunction7"), (int *)&(color.UserFunction.UserFunction7.Conf) );
+		ini_getkey( filename, TEXT("Color"), TEXT("UserFunction8"), (int *)&(color.UserFunction.UserFunction8.Conf) );
+
 		ini_getkey( filename, TEXT("UserColor"), TEXT("Default"), (int *)&(color.Character.Default.Combo) );
 		ini_getkey( filename, TEXT("UserColor"), TEXT("String"), (int *)&(color.Character.String.Combo) );
 		ini_getkey( filename, TEXT("UserColor"), TEXT("Function"), (int *)&(color.Character.Function.Combo) );
@@ -1035,6 +1222,22 @@ static void ini_load()
 		ini_getkey( filename, TEXT("UserColor"), TEXT("RulerBackGround"), (int *)&(color.Ruler.Background.Combo) );
 		ini_getkey( filename, TEXT("UserColor"), TEXT("RulerDivision"), (int *)&(color.Ruler.Division.Combo) );
 		ini_getkey( filename, TEXT("UserColor"), TEXT("RulerCaret"), (int *)&(color.Ruler.Caret.Combo) );
+
+		// by Tetr@pod
+		ini_getkey( filename, TEXT("UserColor"), TEXT("URL"), (int *)&(color.Clickable.URL.Combo) );
+		ini_getkey( filename, TEXT("UserColor"), TEXT("URLUnderLine"), (int *)&(color.Clickable.URLUnderLine.Combo) );
+		ini_getkey( filename, TEXT("UserColor"), TEXT("Mail"), (int *)&(color.Clickable.Mail.Combo) );
+		ini_getkey( filename, TEXT("UserColor"), TEXT("MailUnderLine"), (int *)&(color.Clickable.MailUnderLine.Combo) );
+		ini_getkey( filename, TEXT("UserColor"), TEXT("Label"), (int *)&(color.Clickable.Label.Combo) );
+		ini_getkey( filename, TEXT("UserColor"), TEXT("LabelUnderLine"), (int *)&(color.Clickable.LabelUnderLine.Combo) );
+		ini_getkey( filename, TEXT("UserColor"), TEXT("UserFunction1"), (int *)&(color.UserFunction.UserFunction1.Combo) );
+		ini_getkey( filename, TEXT("UserColor"), TEXT("UserFunction2"), (int *)&(color.UserFunction.UserFunction2.Combo) );
+		ini_getkey( filename, TEXT("UserColor"), TEXT("UserFunction3"), (int *)&(color.UserFunction.UserFunction3.Combo) );
+		ini_getkey( filename, TEXT("UserColor"), TEXT("UserFunction4"), (int *)&(color.UserFunction.UserFunction4.Combo) );
+		ini_getkey( filename, TEXT("UserColor"), TEXT("UserFunction5"), (int *)&(color.UserFunction.UserFunction5.Combo) );
+		ini_getkey( filename, TEXT("UserColor"), TEXT("UserFunction6"), (int *)&(color.UserFunction.UserFunction6.Combo) );
+		ini_getkey( filename, TEXT("UserColor"), TEXT("UserFunction7"), (int *)&(color.UserFunction.UserFunction7.Combo) );
+		ini_getkey( filename, TEXT("UserColor"), TEXT("UserFunction8"), (int *)&(color.UserFunction.UserFunction8.Combo) );
 
 		ini_sgetkey( filename, TEXT("Keywords"), TEXT("keyfile"), szKeyFile, sizeof(szKeyFile));
 
@@ -1090,4 +1293,5 @@ static void ini_load()
 			hsp_helpdir[0]=0;
 		}
 	}
+
 }

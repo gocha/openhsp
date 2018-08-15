@@ -90,7 +90,11 @@ void SetMenuExtTool()
 		mii.fType      = MFT_STRING;
 		mii.fState     = MFS_GRAYED;
 		mii.wID        = 0;
+#ifdef JPNMSG
 		mii.dwTypeData = TEXT("äOïîÉcÅ[ÉãÇÕÇ†ÇËÇ‹ÇπÇÒ");
+#else
+		mii.dwTypeData = TEXT("No external tools");
+#endif
 		InsertMenuItem(hMainMenu, POS_TOOLMAINBASE, TRUE, &mii);
 	}
 	DrawMenuBar(hwbak);

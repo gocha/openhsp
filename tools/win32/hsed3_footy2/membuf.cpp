@@ -124,7 +124,7 @@ void CMemBuf::Put( TCHAR data )
 void CMemBuf::Put( unsigned char data )
 {
 	unsigned char *p;
-	p = (unsigned char * ) PreparePtr( 1 );
+	p = (unsigned char *) PreparePtr( 1 );
 	*p = data;
 }
 

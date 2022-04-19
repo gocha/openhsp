@@ -24,7 +24,6 @@
 #include <direct.h>
 #endif
 
-#include "hspwnd.h"
 #include "supio.h"
 #include "dpmread.h"
 #include "strbuf.h"
